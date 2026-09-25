@@ -5,9 +5,6 @@ import time
 import threading
 import urllib.parse
 import random
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from functools import wraps
 import requests
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -25,11 +22,8 @@ MHD_PRODUCTS_URL = f"{API_BASE_URL}/client/api/products"
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "sare3admin@gmail.com")
 ADMIN_PASS = os.environ.get("ADMIN_PASS", "m7md_570")
 
-SMTP_EMAIL = os.environ.get("SMTP_EMAIL", "sare3admin@gmail.com")
-# تنظيف كلمة مرور التطبيقات من المسافات لضمان قبولها من سيرفر Google
-SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "oolscoajpggrgnwi").replace(" ", "").strip()
-SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
-SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
+# مفتاح Resend المعتمد للإرسال
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "re_CLwygJTN_3k2H6fL2eMZwRaCQ9d9jKoEd")
 
 # إعدادات قاعدة بيانات Supabase
 DB_USER = os.environ.get("DB_USER", "postgres.mqmxgnghuapisgpgtrla")
@@ -237,43 +231,41 @@ def init_db():
         print(f"❌ خطأ أثناء تهيئة قاعدة البيانات: {e}")
 
 
-# ================= دوال مساعدة =================
+# ================= دالة إرسال كود التحقق عبر Resend API =================
 def send_otp_email(recipient_email, otp_code):
     try:
-        msg = MIMEMultipart("alternative")
-        msg["From"] = f"سريع ستور <{SMTP_EMAIL}>"
-        msg["To"] = recipient_email
-        msg["Subject"] = "تأكيد حسابك في متجر سريع"
-
-        text_content = f"مرحباً بك،\nرمز تأكيد بريدك الإلكتروني هو: {otp_code}\nصالح للاستخدام لمرة واحدة.\nسريع ستور"
-        html_content = f"""
-        <!DOCTYPE html>
-        <html lang="ar" dir="rtl">
-        <body style="font-family: Arial, sans-serif; background-color: #ffffff; color: #1e293b; padding: 20px;">
-            <div style="max-width: 480px; margin: 0 auto; border: 1px solid #cbd5e1; border-radius: 8px; padding: 24px;">
-                <h3 style="margin-top: 0; color: #0f172a;">مرحباً بك في سريع ستور</h3>
-                <p style="font-size: 14px; color: #475569;">رمز التحقق الخاص بك هو:</p>
-                <div style="background-color: #f1f5f9; border-radius: 6px; padding: 16px; text-align: center; margin: 20px 0;">
-                    <span style="font-size: 26px; font-weight: bold; letter-spacing: 4px; color: #0f172a;">{otp_code}</span>
+        url = "https://api.resend.com/emails"
+        headers = {
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "from": "سريع ستور <onboarding@resend.dev>",
+            "to": [recipient_email],
+            "subject": "تأكيد حسابك في متجر سريع",
+            "html": f"""
+            <!DOCTYPE html>
+            <html lang="ar" dir="rtl">
+            <body style="font-family: Arial, sans-serif; background-color: #ffffff; color: #1e293b; padding: 20px;">
+                <div style="max-width: 480px; margin: 0 auto; border: 1px solid #cbd5e1; border-radius: 8px; padding: 24px;">
+                    <h3 style="margin-top: 0; color: #0f172a;">مرحباً بك في سريع ستور</h3>
+                    <p style="font-size: 14px; color: #475569;">رمز التحقق الخاص بك هو:</p>
+                    <div style="background-color: #f1f5f9; border-radius: 6px; padding: 16px; text-align: center; margin: 20px 0;">
+                        <span style="font-size: 28px; font-weight: bold; letter-spacing: 5px; color: #00cc55;">{otp_code}</span>
+                    </div>
                 </div>
-            </div>
-        </body>
-        </html>
-        """
-        msg.attach(MIMEText(text_content, "plain", "utf-8"))
-        msg.attach(MIMEText(html_content, "html", "utf-8"))
-
-        # استخدام منفذ 587 مع starttls لتفادي حظر المنفذ 465 على Render
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=15)
-        server.ehlo()
-        server.starttls()
-        server.ehlo()
-        server.login(SMTP_EMAIL, SMTP_PASSWORD)
-        server.send_message(msg)
-        server.quit()
-        return True
+            </body>
+            </html>
+            """
+        }
+        res = requests.post(url, headers=headers, json=payload, timeout=12)
+        if res.status_code in [200, 201]:
+            return True
+        else:
+            print(f"❌ خطأ رد سيرفر Resend: {res.status_code} - {res.text}")
+            return False
     except Exception as e:
-        print(f"❌ خطأ إرسال الإيميل: {repr(e)}")
+        print(f"❌ استثناء أثناء إرسال البريد: {repr(e)}")
         return False
 
 
@@ -739,7 +731,7 @@ HTML_TEMPLATE = """
         .product-price { font-size: 1.2rem; font-weight: 900; color: var(--neon-green-dark); margin: 0.5rem 0; }
 
         .bottom-nav {
-            position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid var(--border-light);
+            position: fixed bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid var(--border-light);
             display: flex; justify-content: space-around; padding: 0.7rem 0; z-index: 100;
             box-shadow: 0 -4px 15px rgba(0,0,0,0.04);
         }
