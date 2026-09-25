@@ -21,9 +21,6 @@ MHD_PRODUCTS_URL = f"{API_BASE_URL}/client/api/products"
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "sare3admin@gmail.com")
 ADMIN_PASS = os.environ.get("ADMIN_PASS", "m7md_570")
 
-# معرّف Google Client ID الرسمي الخاص بمشروعك
-GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "800052990178-61709ndh64419icit9j8gct936qpkevgf.apps.googleusercontent.com")
-
 # إعدادات قاعدة بيانات Supabase
 DB_USER = os.environ.get("DB_USER", "postgres.mqmxgnghuapisgpgtrla")
 DB_PASS = os.environ.get("DB_PASS", "mlpoknbji0$570")
@@ -34,7 +31,7 @@ DB_NAME = os.environ.get("DB_NAME", "postgres")
 http_session = requests.Session()
 
 
-# ================= قاعدة البيانات السحابية (Supabase) المسرّعة =================
+# ================= قاعدة البيانات السحابية (Supabase) =================
 def create_raw_connection():
     return pg8000.dbapi.connect(
         user=DB_USER,
@@ -413,8 +410,6 @@ HTML_TEMPLATE = """
     <title>SARE3 STOR | المتجر المباشر</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- مكتبة تسجيل الدخول بحساب Google -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
             --bg-page: #f8fafc;
@@ -487,23 +482,6 @@ HTML_TEMPLATE = """
             min-height: 112px;
         }
 
-        .banner-slide-item::before {
-            content: '';
-            position: absolute;
-            top: -60%;
-            left: -60%;
-            width: 220%;
-            height: 220%;
-            background: linear-gradient(65deg, transparent 35%, rgba(255, 255, 255, 0.12) 50%, transparent 65%);
-            transform: rotate(25deg);
-            pointer-events: none;
-            animation: lightShimmer 6s infinite ease-in-out;
-        }
-        @keyframes lightShimmer {
-            0% { transform: translateX(-100%) rotate(25deg); }
-            50%, 100% { transform: translateX(100%) rotate(25deg); }
-        }
-
         .slide-telegram {
             background: radial-gradient(circle at 100% 0%, #0ea5e9 0%, #0284c7 45%, #034b75 100%);
             border: 1px solid rgba(14, 165, 233, 0.45);
@@ -537,18 +515,17 @@ HTML_TEMPLATE = """
             justify-content: center;
             font-size: 1.75rem;
             flex-shrink: 0;
-            transition: all 0.3s ease;
         }
         .slide-telegram .slide-icon-circle {
             background: #ffffff;
             color: #0284c7;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25), 0 0 16px rgba(255, 255, 255, 0.4);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
         }
         .slide-welcome .slide-icon-circle {
             background: linear-gradient(135deg, rgba(0, 255, 102, 0.25), rgba(0, 204, 85, 0.05));
             color: var(--neon-green);
             border: 1.5px solid var(--neon-green);
-            box-shadow: 0 8px 20px rgba(0, 255, 102, 0.25), inset 0 0 12px rgba(0, 255, 102, 0.2);
+            box-shadow: 0 8px 20px rgba(0, 255, 102, 0.25);
         }
 
         .slide-text h3 {
@@ -556,28 +533,15 @@ HTML_TEMPLATE = """
             font-weight: 800;
             margin: 0;
             color: #f1f5f9;
-            line-height: 1.25;
-            letter-spacing: -0.2px;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.4);
         }
         .slide-text h2 {
             font-size: 1.45rem;
             font-weight: 900;
             margin: 0.15rem 0 0 0;
-            line-height: 1.2;
-            letter-spacing: 0.4px;
         }
-        .slide-telegram .slide-text h2 {
-            color: #fde047;
-            text-shadow: 0 2px 10px rgba(253, 224, 71, 0.4);
-        }
-        .slide-welcome .slide-text h2 {
-            color: #ffffff;
-        }
-        .slide-welcome .slide-text h2 span {
-            color: var(--neon-green);
-            text-shadow: 0 0 14px rgba(0, 255, 102, 0.55);
-        }
+        .slide-telegram .slide-text h2 { color: #fde047; }
+        .slide-welcome .slide-text h2 { color: #ffffff; }
+        .slide-welcome .slide-text h2 span { color: var(--neon-green); }
 
         .slide-btn-badge {
             font-weight: 900;
@@ -588,21 +552,9 @@ HTML_TEMPLATE = """
             align-items: center;
             gap: 0.4rem;
             white-space: nowrap;
-            transition: all 0.25s ease;
         }
-        .slide-telegram .slide-btn-badge {
-            background: #ffffff;
-            color: #0369a1;
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-        }
-        .slide-welcome .slide-btn-badge {
-            background: linear-gradient(135deg, var(--neon-green), var(--neon-green-dark));
-            color: #042f2e;
-            box-shadow: 0 6px 18px var(--neon-glow);
-        }
-        .banner-slide-item:hover .slide-btn-badge {
-            transform: scale(1.05);
-        }
+        .slide-telegram .slide-btn-badge { background: #ffffff; color: #0369a1; }
+        .slide-welcome .slide-btn-badge { background: linear-gradient(135deg, var(--neon-green), var(--neon-green-dark)); color: #042f2e; }
 
         .carousel-indicators {
             position: absolute;
@@ -620,13 +572,11 @@ HTML_TEMPLATE = """
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.35);
             cursor: pointer;
-            transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         .indicator-dot.active {
             width: 24px;
             border-radius: 12px;
             background: #ffffff;
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
         }
 
         .marquee-seamless-container {
@@ -645,9 +595,6 @@ HTML_TEMPLATE = """
             display: flex;
             width: max-content;
             animation: seamlessMove 20s linear infinite;
-        }
-        .marquee-seamless-container:hover .marquee-seamless-track {
-            animation-play-state: paused;
         }
         .marquee-seamless-block {
             display: flex;
@@ -716,7 +663,6 @@ HTML_TEMPLATE = """
         .btn-green:hover { background: var(--neon-green); color: #000; }
         .btn-danger { background: #fee2e2; color: #ef4444; }
         .btn-warning { background: #fef3c7; color: #d97706; }
-        .btn-warning:hover { background: #fde68a; }
         .btn-blue { background: #e0f2fe; color: #0284c7; }
 
         .modal-overlay {
@@ -1261,36 +1207,13 @@ HTML_TEMPLATE = """
         {% endif %}
     </nav>
 
-    <!-- نافذة تسجيل الدخول مع زر Google المباشر -->
+    <!-- نافذة تسجيل الدخول النظيفة والسريعة -->
     <div id="modal-auth" class="modal-overlay">
         <div class="modal">
-            <h3 style="margin-bottom: 0.4rem; text-align: center;">تسجيل الدخول / إنشاء حساب</h3>
-            <p style="font-size:0.8rem; color:var(--text-muted); text-align: center; margin-bottom:1.2rem;">اختر الطريقة الأنسب لك للمتابعة</p>
-
-            <!-- زر Google المباشر بالمعرف المحدث -->
-            <div style="display: flex; justify-content: center; margin-bottom: 1.2rem;">
-                <div id="g_id_onload"
-                     data-client_id="{{ google_client_id }}"
-                     data-context="signin"
-                     data-ux_mode="popup"
-                     data-callback="handleGoogleLoginResponse"
-                     data-auto_prompt="false">
-                </div>
-                <div class="g_id_signin"
-                     data-type="standard"
-                     data-shape="pill"
-                     data-theme="outline"
-                     data-text="continue_with"
-                     data-size="large"
-                     data-logo_alignment="right">
-                </div>
-            </div>
-
-            <div style="display:flex; align-items:center; gap:0.5rem; margin:1rem 0;">
-                <hr style="flex:1; border:none; border-top:1px solid #e2e8f0;">
-                <span style="font-size:0.75rem; color:#94a3b8; font-weight:700;">أو بالبريد الإلكتروني</span>
-                <hr style="flex:1; border:none; border-top:1px solid #e2e8f0;">
-            </div>
+            <h3 style="margin-bottom: 0.4rem; text-align: center;">تسجيل الدخول / حساب جديد</h3>
+            <p style="font-size:0.82rem; color:var(--text-muted); text-align: center; margin-bottom:1.2rem;">
+                إذا كان لديك حساب سجل دخولك، أو اكتب بريدك وكلمة سر جديدة لإنشاء حسابك فوراً.
+            </p>
 
             <form onsubmit="handleDirectAuth(event)">
                 <div class="form-group">
@@ -1299,7 +1222,7 @@ HTML_TEMPLATE = """
                 </div>
                 <div class="form-group">
                     <label>كلمة المرور:</label>
-                    <input type="password" id="auth-pass-val" class="form-input" placeholder="كلمة المرور الخاصة بحسابك بالمتجر" required>
+                    <input type="password" id="auth-pass-val" class="form-input" placeholder="كلمة المرور" required>
                 </div>
                 <button type="submit" class="btn btn-green" style="width: 100%;" id="btn-auth-submit">
                     متابعة الدخول
@@ -1310,7 +1233,7 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
-    <!-- نافذة الشراء للمستخدم -->
+    <!-- نافذة الشراء -->
     <div id="modal-buy" class="modal-overlay">
         <div class="modal">
             <h3 id="buy-prod-name">تفاصيل الشراء</h3>
@@ -1323,7 +1246,7 @@ HTML_TEMPLATE = """
 
             {% if vip_info.discount > 0 %}
             <div style="background:#ecfdf5; color:var(--neon-green-dark); border:1px solid #a7f3d0; padding:0.4rem 0.8rem; border-radius:12px; font-weight:800; font-size:0.82rem; margin-bottom:0.8rem;">
-                🎉 تم تطبيق خصم VIPmax بنسبة 1% تلقائياً!
+                🎉 تم تطبيق خصم VIP بنسبة 1% تلقائياً!
             </div>
             {% endif %}
 
@@ -1356,7 +1279,7 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
-    <!-- نافذة تعديل / إضافة وصف المنتج -->
+    <!-- نوافذ الإدارة -->
     <div id="modal-edit-desc" class="modal-overlay">
         <div class="modal">
             <h3 id="edit-desc-title">تعديل وصف المنتج</h3>
@@ -1411,9 +1334,9 @@ HTML_TEMPLATE = """
                 <div class="form-group">
                     <label>نوع الطلب:</label>
                     <select id="prod-requires-id-select" class="form-input">
-                        <option value="auto">كشف تلقائي (حسب اسم ونوع المنتج)</option>
-                        <option value="0">كود رقمي مباشر (لا يتطلب آيدي - تسليم كود)</option>
-                        <option value="1">شحن مباشر (يتطلب إدخال آيدي اللاعب)</option>
+                        <option value="auto">كشف تلقائي</option>
+                        <option value="0">كود رقمي مباشر (بدون آيدي)</option>
+                        <option value="1">شحن مباشر (يتطلب آيدي)</option>
                     </select>
                 </div>
                 <div class="form-group"><label>الوصف:</label><textarea id="prod-desc-input" class="form-input"></textarea></div>
@@ -1517,7 +1440,6 @@ HTML_TEMPLATE = """
         let currentLoadedProducts = [];
         let adminProductsList = [];
 
-        // منطق تبديل البانرات
         let currentSlide = 0;
         const totalSlides = 2;
         let slideTimer = null;
@@ -1593,7 +1515,6 @@ HTML_TEMPLATE = """
             openModal('modal-auth');
         }
 
-        // تسجيل الدخول العادي بالبريد وكلمة المرور
         async function handleDirectAuth(e) {
             e.preventDefault();
             const email = document.getElementById('auth-email-val').value.trim();
@@ -1620,27 +1541,6 @@ HTML_TEMPLATE = """
                 alert('حدث خطأ في الاتصال بالخادم');
             } finally {
                 btn.disabled = false;
-            }
-        }
-
-        // استجابة تسجيل الدخول بحساب Google الرسمي
-        async function handleGoogleLoginResponse(response) {
-            if (!response.credential) return;
-
-            try {
-                const res = await fetch('/api/auth/google', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ credential: response.credential })
-                });
-                const d = await res.json();
-                if (d.status === 'ok') {
-                    location.reload();
-                } else {
-                    alert(d.message);
-                }
-            } catch (e) {
-                alert('فشل تسجيل الدخول باستخدام Google');
             }
         }
 
@@ -2493,7 +2393,6 @@ def index():
         user=user,
         vip_info=vip_info,
         admin_email=ADMIN_EMAIL,
-        google_client_id=GOOGLE_CLIENT_ID,
         exchange_rate=float(settings.get("exchange_rate", 15000)),
         support_telegram=settings.get("support_telegram", "SARE3_STOR_Support"),
         support_whatsapp=settings.get("support_whatsapp", "0997062693"),
@@ -2502,65 +2401,7 @@ def index():
     )
 
 
-# تسجيل الدخول الرسمي عبر Google Identity
-@app.route("/api/auth/google", methods=["POST"])
-def api_auth_google():
-    data = request.get_json() or {}
-    token = data.get("credential")
-    if not token:
-        return jsonify({"status": "error", "message": "رمز التحقق مفقود"}), 400
-
-    try:
-        verify_url = f"https://oauth2.googleapis.com/tokeninfo?id_token={token}"
-        resp = requests.get(verify_url, timeout=10)
-        if resp.status_code != 200:
-            return jsonify({"status": "error", "message": "فشل التحقق من حساب Google"}), 400
-
-        google_info = resp.json()
-        email = google_info.get("email", "").strip().lower()
-        if not email:
-            return jsonify({"status": "error", "message": "تعذر استخراج البريد من حساب Google"}), 400
-
-        conn = get_db()
-        c = get_cursor(conn)
-
-        is_master_admin = (email == ADMIN_EMAIL.lower())
-
-        c.execute("SELECT * FROM users WHERE username=%s", (email,))
-        user = c.fetchone()
-
-        if not user:
-            is_admin = 1 if is_master_admin else 0
-            vip_lvl = "VIPmax" if is_master_admin else "auto"
-            bal = 100000.0 if is_master_admin else 0.0
-            dummy_hash = generate_password_hash(str(uuid.uuid4()))
-
-            c.execute("""INSERT INTO users(username, password, balance, is_admin, vip_level) 
-                         VALUES(%s, %s, %s, %s, %s) RETURNING id""", (email, dummy_hash, bal, is_admin, vip_lvl))
-            user_id = c.fetchone()["id"]
-            conn.commit()
-        else:
-            if user["is_banned"]:
-                return jsonify({"status": "error", "message": "تم حظر هذا الحساب، يرجى التواصل مع الإدارة"}), 403
-
-            if is_master_admin:
-                c.execute("UPDATE users SET is_admin=1, vip_level='VIPmax' WHERE id=%s", (user["id"],))
-                conn.commit()
-
-            user_id = user["id"]
-            is_admin = 1 if is_master_admin else bool(user["is_admin"])
-
-        session["user_id"] = user_id
-        session["username"] = email
-        session["is_admin"] = is_admin
-
-        return jsonify({"status": "ok", "message": "تم تسجيل الدخول عبر Google بنجاح"})
-
-    except Exception as e:
-        return jsonify({"status": "error", "message": f"حدث خطأ أثناء الاتصال: {e}"}), 500
-
-
-# مسار تسجيل الدخول المباشر بالبريد وكلمة المرور
+# تسجيل الدخول أو إنشاء الحساب المباشر
 @app.route("/api/auth/login_or_register", methods=["POST"])
 def api_auth_login_or_register():
     data = request.get_json() or {}
