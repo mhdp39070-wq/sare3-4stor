@@ -4,7 +4,6 @@ import uuid
 import time
 import threading
 import urllib.parse
-import random
 from functools import wraps
 import requests
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -22,8 +21,8 @@ MHD_PRODUCTS_URL = f"{API_BASE_URL}/client/api/products"
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "sare3admin@gmail.com")
 ADMIN_PASS = os.environ.get("ADMIN_PASS", "m7md_570")
 
-# مفتاح Resend المعتمد للإرسال
-RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "re_CLwygJTN_3k2H6fL2eMZwRaCQ9d9jKoEd")
+# معرّف Google Client ID (ضع المعرّف الخاص بك هنا أو في متغيرات Render)
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "ضع_معرف_جوجل_هنا_أو_في_ريندر")
 
 # إعدادات قاعدة بيانات Supabase
 DB_USER = os.environ.get("DB_USER", "postgres.mqmxgnghuapisgpgtrla")
@@ -115,12 +114,6 @@ def init_db():
             is_admin INT DEFAULT 0,
             is_banned INT DEFAULT 0,
             vip_level TEXT DEFAULT 'auto'
-        )""")
-
-        c.execute("""CREATE TABLE IF NOT EXISTS email_verifications (
-            email TEXT PRIMARY KEY,
-            code TEXT,
-            created_at TIMESTAMP DEFAULT NOW()
         )""")
 
         c.execute("""CREATE TABLE IF NOT EXISTS categories (
@@ -231,44 +224,7 @@ def init_db():
         print(f"❌ خطأ أثناء تهيئة قاعدة البيانات: {e}")
 
 
-# ================= دالة إرسال كود التحقق عبر Resend API =================
-def send_otp_email(recipient_email, otp_code):
-    try:
-        url = "https://api.resend.com/emails"
-        headers = {
-            "Authorization": f"Bearer {RESEND_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "from": "سريع ستور <onboarding@resend.dev>",
-            "to": [recipient_email],
-            "subject": "تأكيد حسابك في متجر سريع",
-            "html": f"""
-            <!DOCTYPE html>
-            <html lang="ar" dir="rtl">
-            <body style="font-family: Arial, sans-serif; background-color: #ffffff; color: #1e293b; padding: 20px;">
-                <div style="max-width: 480px; margin: 0 auto; border: 1px solid #cbd5e1; border-radius: 8px; padding: 24px;">
-                    <h3 style="margin-top: 0; color: #0f172a;">مرحباً بك في سريع ستور</h3>
-                    <p style="font-size: 14px; color: #475569;">رمز التحقق الخاص بك هو:</p>
-                    <div style="background-color: #f1f5f9; border-radius: 6px; padding: 16px; text-align: center; margin: 20px 0;">
-                        <span style="font-size: 28px; font-weight: bold; letter-spacing: 5px; color: #00cc55;">{otp_code}</span>
-                    </div>
-                </div>
-            </body>
-            </html>
-            """
-        }
-        res = requests.post(url, headers=headers, json=payload, timeout=12)
-        if res.status_code in [200, 201]:
-            return True
-        else:
-            print(f"❌ خطأ رد سيرفر Resend: {res.status_code} - {res.text}")
-            return False
-    except Exception as e:
-        print(f"❌ استثناء أثناء إرسال البريد: {repr(e)}")
-        return False
-
-
+# ================= دوال مساعدة =================
 def get_setting(key, default="", conn=None):
     try:
         if conn is None:
@@ -457,6 +413,8 @@ HTML_TEMPLATE = """
     <title>SARE3 STOR | المتجر المباشر</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- مكتبة تسجيل الدخول بحساب Google -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
             --bg-page: #f8fafc;
@@ -731,7 +689,7 @@ HTML_TEMPLATE = """
         .product-price { font-size: 1.2rem; font-weight: 900; color: var(--neon-green-dark); margin: 0.5rem 0; }
 
         .bottom-nav {
-            position: fixed bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid var(--border-light);
+            position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid var(--border-light);
             display: flex; justify-content: space-around; padding: 0.7rem 0; z-index: 100;
             box-shadow: 0 -4px 15px rgba(0,0,0,0.04);
         }
@@ -1303,43 +1261,52 @@ HTML_TEMPLATE = """
         {% endif %}
     </nav>
 
-    <!-- نافذة تسجيل الدخول -->
+    <!-- نافذة تسجيل الدخول مع زر Google الرسمي -->
     <div id="modal-auth" class="modal-overlay">
         <div class="modal">
-            <h3 id="auth-title" style="margin-bottom: 0.6rem;">تسجيل الدخول / إنشاء حساب</h3>
-            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">يتم إرسال رمز أمان لبريدك للتأكد من هويتك</p>
+            <h3 style="margin-bottom: 0.4rem; text-align: center;">تسجيل الدخول / إنشاء حساب</h3>
+            <p style="font-size:0.8rem; color:var(--text-muted); text-align: center; margin-bottom:1.2rem;">اختر الطريقة الأنسب لك للمتابعة</p>
 
-            <div id="auth-step-email">
+            <!-- زر Google المباشر -->
+            <div style="display: flex; justify-content: center; margin-bottom: 1.2rem;">
+                <div id="g_id_onload"
+                     data-client_id="{{ google_client_id }}"
+                     data-context="signin"
+                     data-ux_mode="popup"
+                     data-callback="handleGoogleLoginResponse"
+                     data-auto_prompt="false">
+                </div>
+                <div class="g_id_signin"
+                     data-type="standard"
+                     data-shape="pill"
+                     data-theme="outline"
+                     data-text="continue_with"
+                     data-size="large"
+                     data-logo_alignment="right">
+                </div>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:0.5rem; margin:1rem 0;">
+                <hr style="flex:1; border:none; border-top:1px solid #e2e8f0;">
+                <span style="font-size:0.75rem; color:#94a3b8; font-weight:700;">أو بالبريد الإلكتروني</span>
+                <hr style="flex:1; border:none; border-top:1px solid #e2e8f0;">
+            </div>
+
+            <form onsubmit="handleDirectAuth(event)">
                 <div class="form-group">
                     <label>البريد الإلكتروني:</label>
                     <input type="email" id="auth-email-val" class="form-input" placeholder="name@gmail.com" required>
                 </div>
-                <button type="button" class="btn btn-green" style="width: 100%;" id="btn-send-code" onclick="triggerSendCode()">
-                    إرسال رمز التحقق
-                </button>
-            </div>
-
-            <div id="auth-step-code" style="display: none; margin-top: 1rem;">
-                <div class="form-group" id="code-input-group">
-                    <label>رمز التحقق (تم إرساله للبريد):</label>
-                    <input type="text" id="auth-code-val" class="form-input" placeholder="أدخل الرمز المكون من 6 أرقام">
-                    <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.35rem;">
-                        ⚠️ إذا لم تجد الرمز، يرجى تفقد مجلد الرسائل غير المرغوب فيها (Spam).
-                    </p>
-                </div>
                 <div class="form-group">
                     <label>كلمة المرور:</label>
-                    <input type="password" id="auth-pass-val" class="form-input" placeholder="كلمة المرور" required>
+                    <input type="password" id="auth-pass-val" class="form-input" placeholder="كلمة المرور الخاصة بحسابك بالمتجر" required>
                 </div>
-                <button type="button" class="btn btn-green" style="width: 100%;" id="btn-verify-login" onclick="triggerVerifyAndLogin()">
-                    تأكيد والدخول
+                <button type="submit" class="btn btn-green" style="width: 100%;" id="btn-auth-submit">
+                    متابعة الدخول
                 </button>
-                <button type="button" class="btn" style="width: 100%; margin-top: 0.4rem; font-size: 0.75rem;" onclick="resetAuthSteps()">
-                    تغيير البريد الإلكتروني
-                </button>
-            </div>
+            </form>
 
-            <button type="button" class="btn" style="width: 100%; margin-top: 0.5rem;" onclick="closeModal('modal-auth')">إلغاء</button>
+            <button type="button" class="btn" style="width: 100%; margin-top: 0.6rem;" onclick="closeModal('modal-auth')">إلغاء</button>
         </div>
     </div>
 
@@ -1623,84 +1590,57 @@ HTML_TEMPLATE = """
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
         function openAuthModal() {
-            resetAuthSteps();
             openModal('modal-auth');
         }
 
-        function resetAuthSteps() {
-            document.getElementById('auth-step-email').style.display = 'block';
-            document.getElementById('auth-step-code').style.display = 'none';
-            document.getElementById('auth-code-val').value = '';
-            document.getElementById('auth-pass-val').value = '';
-        }
-
-        async function triggerSendCode() {
+        // تسجيل الدخول العادي بالبريد وكلمة المرور
+        async function handleDirectAuth(e) {
+            e.preventDefault();
             const email = document.getElementById('auth-email-val').value.trim();
-            if (!email || !email.includes('@')) {
-                return alert('يرجى كتابة بريد إلكتروني صحيح');
-            }
+            const password = document.getElementById('auth-pass-val').value.trim();
 
-            if (email.toLowerCase() === '{{ admin_email|lower }}') {
-                document.getElementById('auth-step-email').style.display = 'none';
-                document.getElementById('auth-step-code').style.display = 'block';
-                document.getElementById('code-input-group').style.display = 'none';
-                return;
-            } else {
-                document.getElementById('code-input-group').style.display = 'block';
-            }
+            if (!email || !password) return alert('يرجى ملء جميع الحقول');
 
-            const btn = document.getElementById('btn-send-code');
+            const btn = document.getElementById('btn-auth-submit');
             btn.disabled = true;
-            btn.innerText = 'جاري إرسال الرمز إلى بريدك...';
 
             try {
-                const res = await fetch('/api/auth/send_code', {
+                const res = await fetch('/api/auth/login_or_register', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ email })
+                    body: JSON.stringify({ email, password })
                 });
                 const d = await res.json();
-                alert(d.message);
-
                 if (d.status === 'ok') {
-                    document.getElementById('auth-step-email').style.display = 'none';
-                    document.getElementById('auth-step-code').style.display = 'block';
+                    location.reload();
+                } else {
+                    alert(d.message);
                 }
-            } catch (e) {
+            } catch (err) {
                 alert('حدث خطأ في الاتصال بالخادم');
             } finally {
                 btn.disabled = false;
-                btn.innerText = 'إرسال رمز التحقق';
             }
         }
 
-        async function triggerVerifyAndLogin() {
-            const email = document.getElementById('auth-email-val').value.trim();
-            const code = document.getElementById('auth-code-val').value.trim();
-            const password = document.getElementById('auth-pass-val').value.trim();
-
-            if (!password) return alert('يرجى إدخال كلمة المرور');
-
-            const btn = document.getElementById('btn-verify-login');
-            btn.disabled = true;
+        // استجابة تسجيل الدخول بحساب Google الرسمي
+        async function handleGoogleLoginResponse(response) {
+            if (!response.credential) return;
 
             try {
-                const res = await fetch('/api/auth/verify_login', {
+                const res = await fetch('/api/auth/google', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ email, code, password })
+                    body: JSON.stringify({ credential: response.credential })
                 });
                 const d = await res.json();
-
                 if (d.status === 'ok') {
                     location.reload();
                 } else {
                     alert(d.message);
                 }
             } catch (e) {
-                alert('حدث خطأ أثناء التأكيد');
-            } finally {
-                btn.disabled = false;
+                alert('فشل تسجيل الدخول باستخدام Google');
             }
         }
 
@@ -2553,6 +2493,7 @@ def index():
         user=user,
         vip_info=vip_info,
         admin_email=ADMIN_EMAIL,
+        google_client_id=GOOGLE_CLIENT_ID,
         exchange_rate=float(settings.get("exchange_rate", 15000)),
         support_telegram=settings.get("support_telegram", "SARE3_STOR_Support"),
         support_whatsapp=settings.get("support_whatsapp", "0997062693"),
@@ -2561,33 +2502,71 @@ def index():
     )
 
 
-@app.route("/api/auth/send_code", methods=["POST"])
-def api_auth_send_code():
+# تسجيل الدخول الرسمي عبر Google Identity
+@app.route("/api/auth/google", methods=["POST"])
+def api_auth_google():
+    data = request.get_json() or {}
+    token = data.get("credential")
+    if not token:
+        return jsonify({"status": "error", "message": "رمز التحقق مفقود"}), 400
+
+    try:
+        # التحقق من صحة التوكن مباشرة من خوادم Google الرسمية
+        verify_url = f"https://oauth2.googleapis.com/tokeninfo?id_token={token}"
+        resp = requests.get(verify_url, timeout=10)
+        if resp.status_code != 200:
+            return jsonify({"status": "error", "message": "فشل التحقق من حساب Google"}), 400
+
+        google_info = resp.json()
+        email = google_info.get("email", "").strip().lower()
+        if not email:
+            return jsonify({"status": "error", "message": "تعذر استخراج البريد من حساب Google"}), 400
+
+        conn = get_db()
+        c = get_cursor(conn)
+
+        is_master_admin = (email == ADMIN_EMAIL.lower())
+
+        c.execute("SELECT * FROM users WHERE username=%s", (email,))
+        user = c.fetchone()
+
+        if not user:
+            is_admin = 1 if is_master_admin else 0
+            vip_lvl = "VIPmax" if is_master_admin else "auto"
+            bal = 100000.0 if is_master_admin else 0.0
+            # كلمة مرور عشوائية لأن الدخول يتم عبر Google
+            dummy_hash = generate_password_hash(str(uuid.uuid4()))
+
+            c.execute("""INSERT INTO users(username, password, balance, is_admin, vip_level) 
+                         VALUES(%s, %s, %s, %s, %s) RETURNING id""", (email, dummy_hash, bal, is_admin, vip_lvl))
+            user_id = c.fetchone()["id"]
+            conn.commit()
+        else:
+            if user["is_banned"]:
+                return jsonify({"status": "error", "message": "تم حظر هذا الحساب، يرجى التواصل مع الإدارة"}), 403
+
+            if is_master_admin:
+                c.execute("UPDATE users SET is_admin=1, vip_level='VIPmax' WHERE id=%s", (user["id"],))
+                conn.commit()
+
+            user_id = user["id"]
+            is_admin = 1 if is_master_admin else bool(user["is_admin"])
+
+        session["user_id"] = user_id
+        session["username"] = email
+        session["is_admin"] = is_admin
+
+        return jsonify({"status": "ok", "message": "تم تسجيل الدخول عبر Google بنجاح"})
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"حدث خطأ أثناء الاتصال: {e}"}), 500
+
+
+# مسار تسجيل الدخول المباشر بالبريد وكلمة المرور
+@app.route("/api/auth/login_or_register", methods=["POST"])
+def api_auth_login_or_register():
     data = request.get_json() or {}
     email = data.get("email", "").strip().lower()
-
-    if not email or "@" not in email or "." not in email:
-        return jsonify({"status": "error", "message": "يرجى كتابة بريد إلكتروني صحيح"}), 400
-
-    otp = str(random.randint(100000, 999999))
-    sent = send_otp_email(email, otp)
-    if not sent:
-        return jsonify({"status": "error", "message": "تعذر إرسال الرمز، تأكد من صحة البريد"}), 500
-
-    conn = get_db()
-    c = get_cursor(conn)
-    c.execute("""INSERT INTO email_verifications(email, code) VALUES(%s, %s)
-                 ON CONFLICT (email) DO UPDATE SET code = EXCLUDED.code, created_at = NOW()""", (email, otp))
-    conn.commit()
-
-    return jsonify({"status": "ok", "message": "تم إرسال رمز التحقق إلى بريدك بنجاح"})
-
-
-@app.route("/api/auth/verify_login", methods=["POST"])
-def api_auth_verify_login():
-    data = request.get_json() or {}
-    email = data.get("email", "").strip().lower()
-    code = data.get("code", "").strip()
     password = data.get("password", "").strip()
 
     if not email or not password:
@@ -2597,14 +2576,6 @@ def api_auth_verify_login():
     c = get_cursor(conn)
 
     is_master_admin = (email == ADMIN_EMAIL.lower() and password == ADMIN_PASS)
-
-    if not is_master_admin:
-        c.execute("SELECT code FROM email_verifications WHERE email=%s", (email,))
-        row = c.fetchone()
-        if not row or row["code"] != code:
-            return jsonify({"status": "error", "message": "رمز التحقق غير صحيح أو منتهي الصلاحية"}), 400
-
-        c.execute("DELETE FROM email_verifications WHERE email=%s", (email,))
 
     c.execute("SELECT * FROM users WHERE username=%s", (email,))
     user = c.fetchone()
