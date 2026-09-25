@@ -26,9 +26,10 @@ ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "sare3admin@gmail.com")
 ADMIN_PASS = os.environ.get("ADMIN_PASS", "m7md_570")
 
 SMTP_EMAIL = os.environ.get("SMTP_EMAIL", "sare3admin@gmail.com")
-SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "ools coaj pggr gnwi")
+# تنظيف كلمة مرور التطبيقات من المسافات لضمان قبولها من سيرفر Google
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "oolscoajpggrgnwi").replace(" ", "").strip()
 SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
-SMTP_PORT = int(os.environ.get("SMTP_PORT", 465))
+SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
 
 # إعدادات قاعدة بيانات Supabase
 DB_USER = os.environ.get("DB_USER", "postgres.mqmxgnghuapisgpgtrla")
@@ -262,12 +263,17 @@ def send_otp_email(recipient_email, otp_code):
         msg.attach(MIMEText(text_content, "plain", "utf-8"))
         msg.attach(MIMEText(html_content, "html", "utf-8"))
 
-        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=10) as server:
-            server.login(SMTP_EMAIL, SMTP_PASSWORD)
-            server.send_message(msg)
+        # استخدام منفذ 587 مع starttls لتفادي حظر المنفذ 465 على Render
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=15)
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(SMTP_EMAIL, SMTP_PASSWORD)
+        server.send_message(msg)
+        server.quit()
         return True
     except Exception as e:
-        print(f"❌ خطأ إرسال الإيميل: {e}")
+        print(f"❌ خطأ إرسال الإيميل: {repr(e)}")
         return False
 
 
@@ -3218,7 +3224,6 @@ def api_delete_payment():
 
 
 # ================= التهيئة وتشغيل المهام الخلفية =================
-# تشغيل التهيئة والثريد ليعمل مع خوادم الإنتاج (مثل Gunicorn) ومع التشغيل المباشر
 init_db()
 
 _tracker_started = False
