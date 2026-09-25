@@ -4,6 +4,7 @@ import uuid
 import time
 import threading
 import urllib.parse
+from datetime import timedelta
 from functools import wraps
 import requests
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -12,7 +13,12 @@ import pg8000.dbapi
 
 # ================= الإعدادات =================
 app = Flask(__name__)
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "sare3_store_super_secret_key_2026")
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "sare3_store_super_secret_key_2026_fixed_persistence")
+
+# إعدادات دوام الجلسة وحفظها
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=60)
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 MHD_API_TOKEN = os.environ.get("MHD_API_TOKEN", "T7um19tGzZVl2sdz09Z8WnlojsWn8TLDNwFrxT1qcvTBJgk6wtuxI6v9miom")
 API_BASE_URL = "https://mhd-game.com/api"
@@ -207,7 +213,7 @@ def init_db():
         if c.fetchone()['count'] == 0:
             default_pays = [
                 ('binance', 'Binance Pay (دولار)', 'يرجى التحويل المباشر عبر ميزة Binance Pay برقم الحساب التالي:', '1192954957', 1),
-                ('syriatel', 'سيرياتيل كاش (ليرة سورية)', 'يرجى التحويل إلى رقم سيرياتيل كاش المرفق مع إدخال رقم المعاملة:', '67997320', 1),
+                ('syriatel', 'سيرياتيل كاش (ليرة سورية)', 'يرجى التحويل إلى رقم سيرياتيل كاش المرفق مع إدخال رقم عملية التحويل بدقة:', '67997320', 1),
                 ('bep20', 'USDT BEP20 (دولار)', 'إرسال عملة USDT عبر شبكة BSC (BEP20) إلى العنوان التالي:', '0xe8688d65f474253e290c1b7491ee2b0799784ad0', 1)
             ]
             for p in default_pays:
@@ -487,6 +493,11 @@ HTML_TEMPLATE = """
             border: 1px solid rgba(14, 165, 233, 0.45);
         }
 
+        .slide-whatsapp {
+            background: radial-gradient(circle at 100% 0%, #25d366 0%, #128c7e 45%, #075e54 100%);
+            border: 1px solid rgba(37, 211, 102, 0.45);
+        }
+
         .slide-welcome {
             background: radial-gradient(circle at 0% 100%, #15803d 0%, #0f172a 50%, #020617 100%);
             border: 1px solid rgba(0, 255, 102, 0.35);
@@ -521,6 +532,11 @@ HTML_TEMPLATE = """
             color: #0284c7;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
         }
+        .slide-whatsapp .slide-icon-circle {
+            background: #ffffff;
+            color: #128c7e;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+        }
         .slide-welcome .slide-icon-circle {
             background: linear-gradient(135deg, rgba(0, 255, 102, 0.25), rgba(0, 204, 85, 0.05));
             color: var(--neon-green);
@@ -540,6 +556,7 @@ HTML_TEMPLATE = """
             margin: 0.15rem 0 0 0;
         }
         .slide-telegram .slide-text h2 { color: #fde047; }
+        .slide-whatsapp .slide-text h2 { color: #ffffff; }
         .slide-welcome .slide-text h2 { color: #ffffff; }
         .slide-welcome .slide-text h2 span { color: var(--neon-green); }
 
@@ -554,6 +571,7 @@ HTML_TEMPLATE = """
             white-space: nowrap;
         }
         .slide-telegram .slide-btn-badge { background: #ffffff; color: #0369a1; }
+        .slide-whatsapp .slide-btn-badge { background: #ffffff; color: #075e54; }
         .slide-welcome .slide-btn-badge { background: linear-gradient(135deg, var(--neon-green), var(--neon-green-dark)); color: #042f2e; }
 
         .carousel-indicators {
@@ -731,9 +749,9 @@ HTML_TEMPLATE = """
         }
         .admin-sidebar::-webkit-scrollbar { display: none; }
         .admin-sidebar-btn {
-            background: #f8fafc; border: 1px solid var(--border-light); padding: 0.55rem 0.9rem;
-            border-radius: 12px; color: #334155; font-size: 0.82rem; font-weight: 800;
-            display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; flex-shrink: 0;
+            background: #f8fafc; border: 1px solid var(--border-light); border-radius: 12px;
+            color: #334155; font-size: 0.82rem; font-weight: 800; display: inline-flex;
+            align-items: center; gap: 0.4rem; cursor: pointer; flex-shrink: 0; padding: 0.55rem 0.9rem;
         }
         .admin-sidebar-btn.active { background: #fee2e2; color: #ef4444; border-color: #fca5a5; }
 
@@ -840,6 +858,7 @@ HTML_TEMPLATE = """
         <main id="sec-store">
             <div class="banners-carousel-wrapper">
                 <div class="banners-slides-container" id="carousel-track">
+                    <!-- الشريحة 1: تيليجرام -->
                     <a href="https://t.me/SARE3_STOR" target="_blank" class="banner-slide-item slide-telegram">
                         <div class="slide-content-box">
                             <div class="slide-right-side">
@@ -857,6 +876,25 @@ HTML_TEMPLATE = """
                         </div>
                     </a>
 
+                    <!-- الشريحة 2: واتساب -->
+                    <a href="https://whatsapp.com/channel/0029Vb93bpHJP211DVO1ek1F" target="_blank" class="banner-slide-item slide-whatsapp">
+                        <div class="slide-content-box">
+                            <div class="slide-right-side">
+                                <div class="slide-icon-circle">
+                                    <i class="fa-brands fa-whatsapp"></i>
+                                </div>
+                                <div class="slide-text">
+                                    <h3>اضغط هنا للانضمام إلى قناة</h3>
+                                    <h2>الواتساب الرسمية</h2>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="slide-btn-badge"><i class="fa-brands fa-whatsapp"></i> انضمام الآن</span>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- الشريحة 3: الترحيب بالمتجر -->
                     <div class="banner-slide-item slide-welcome">
                         <div class="slide-content-box">
                             <div class="slide-right-side">
@@ -878,6 +916,7 @@ HTML_TEMPLATE = """
                 <div class="carousel-indicators">
                     <div class="indicator-dot active" onclick="goToSlide(0)"></div>
                     <div class="indicator-dot" onclick="goToSlide(1)"></div>
+                    <div class="indicator-dot" onclick="goToSlide(2)"></div>
                 </div>
             </div>
 
@@ -945,10 +984,24 @@ HTML_TEMPLATE = """
                     </div>
 
                     <div id="dep-details-box" style="margin-bottom: 1.2rem;">
-                        <p id="dep-method-desc" style="font-size: 0.85rem; color: var(--text-muted);"></p>
-                        <div style="background: #f1f5f9; border: 1px dashed var(--border-light); border-radius: 14px; padding: 0.8rem; display: flex; justify-content: space-between; align-items: center; margin-top: 0.4rem;">
-                            <span id="dep-method-addr" style="font-weight: 800; direction: ltr; font-size: 0.95rem;"></span>
-                            <button type="button" class="btn btn-green" style="padding: 0.25rem 0.7rem; font-size: 0.75rem;" onclick="copyAddr()">نسخ</button>
+                        <!-- بطاقة التعليمات المحسنة والواضحة -->
+                        <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 14px; padding: 0.85rem 1rem; margin-bottom: 0.6rem;">
+                            <div style="font-weight: 800; font-size: 0.86rem; color: #166534; margin-bottom: 0.3rem; display: flex; align-items: center; gap: 0.4rem;">
+                                <i class="fa-solid fa-circle-info" style="color: #22c55e;"></i>
+                                <span>تعليمات التحويل:</span>
+                            </div>
+                            <p id="dep-method-desc" style="font-size: 0.9rem; color: #1e293b; font-weight: 700; line-height: 1.5; white-space: pre-line;"></p>
+                        </div>
+
+                        <!-- الحساب / الرقم للتحويل -->
+                        <div style="background: #f8fafc; border: 1.5px dashed var(--border-light); border-radius: 14px; padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <span style="font-size: 0.75rem; color: var(--text-muted); display: block; font-weight: 700;">الرقم / الحساب المحول إليه:</span>
+                                <span id="dep-method-addr" style="font-weight: 900; direction: ltr; font-size: 1.05rem; color: #0f172a; font-family: monospace;"></span>
+                            </div>
+                            <button type="button" class="btn btn-green" style="padding: 0.35rem 0.85rem; font-size: 0.8rem;" onclick="copyAddr()">
+                                <i class="fa-solid fa-copy"></i> نسخ
+                            </button>
                         </div>
                     </div>
 
@@ -1207,7 +1260,7 @@ HTML_TEMPLATE = """
         {% endif %}
     </nav>
 
-    <!-- نافذة تسجيل الدخول النظيفة والسريعة -->
+    <!-- نافذة تسجيل الدخول -->
     <div id="modal-auth" class="modal-overlay">
         <div class="modal">
             <h3 style="margin-bottom: 0.4rem; text-align: center;">تسجيل الدخول / حساب جديد</h3>
@@ -1416,7 +1469,7 @@ HTML_TEMPLATE = """
             <form onsubmit="addPaymentManual(event)">
                 <div class="form-group"><label>الرمز (code):</label><input type="text" id="pay-code" class="form-input" placeholder="sham_cash" required></div>
                 <div class="form-group"><label>الاسم:</label><input type="text" id="pay-name" class="form-input" placeholder="شام كاش" required></div>
-                <div class="form-group"><label>التعليمات:</label><textarea id="pay-desc" class="form-input"></textarea></div>
+                <div class="form-group"><label>التعليمات:</label><textarea id="pay-desc" class="form-input" placeholder="اكتب تعليمات التحويل هنا..."></textarea></div>
                 <div class="form-group"><label>العنوان / الرقم المحول له:</label><input type="text" id="pay-wallet" class="form-input" required></div>
                 <button type="submit" class="btn btn-green" style="width: 100%;">حفظ وسيلة الدفع</button>
                 <button type="button" class="btn" style="width: 100%; margin-top: 0.5rem;" onclick="closeModal('modal-add-pay')">إلغاء</button>
@@ -1441,7 +1494,7 @@ HTML_TEMPLATE = """
         let adminProductsList = [];
 
         let currentSlide = 0;
-        const totalSlides = 2;
+        const totalSlides = 3;
         let slideTimer = null;
 
         function updateSlidePosition() {
@@ -1835,9 +1888,16 @@ HTML_TEMPLATE = """
         function renderPaymentDetails() {
             const code = document.getElementById('dep-method-sel').value;
             const m = paymentMethods.find(x => x.code === code);
+            const descEl = document.getElementById('dep-method-desc');
+            const addrEl = document.getElementById('dep-method-addr');
+
             if (m) {
-                document.getElementById('dep-method-desc').innerText = m.description || '';
-                document.getElementById('dep-method-addr').innerText = m.wallet_address || '';
+                let descText = (m.description || '').trim();
+                if (!descText) {
+                    descText = 'يرجى تحويل المبلغ بدقة إلى الرقم الموضح أدناه، ثم كتابة رقم العملية (Transaction ID) بشكل صحيح للتأكيد.';
+                }
+                descEl.innerText = descText;
+                addrEl.innerText = m.wallet_address || '—';
             }
         }
 
@@ -1851,7 +1911,9 @@ HTML_TEMPLATE = """
 
         function copyAddr() {
             const addr = document.getElementById('dep-method-addr').innerText;
-            safeCopyToClipboard(addr);
+            if (addr && addr !== '—') {
+                safeCopyToClipboard(addr);
+            }
         }
 
         async function submitDeposit(e) {
@@ -2401,7 +2463,6 @@ def index():
     )
 
 
-# تسجيل الدخول أو إنشاء الحساب المباشر
 @app.route("/api/auth/login_or_register", methods=["POST"])
 def api_auth_login_or_register():
     data = request.get_json() or {}
@@ -2456,6 +2517,7 @@ def api_auth_login_or_register():
 
     conn.commit()
 
+    session.permanent = True
     session["user_id"] = user_id
     session["username"] = email
     session["is_admin"] = is_admin
