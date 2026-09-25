@@ -21,8 +21,8 @@ MHD_PRODUCTS_URL = f"{API_BASE_URL}/client/api/products"
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "sare3admin@gmail.com")
 ADMIN_PASS = os.environ.get("ADMIN_PASS", "m7md_570")
 
-# معرّف Google Client ID (ضع المعرّف الخاص بك هنا أو في متغيرات Render)
-GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "ضع_معرف_جوجل_هنا_أو_في_ريندر")
+# معرّف Google Client ID الرسمي الخاص بمشروعك
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "800052990178-61709ndh64419icit9j8gct936qpkevgf.apps.googleusercontent.com")
 
 # إعدادات قاعدة بيانات Supabase
 DB_USER = os.environ.get("DB_USER", "postgres.mqmxgnghuapisgpgtrla")
@@ -1261,13 +1261,13 @@ HTML_TEMPLATE = """
         {% endif %}
     </nav>
 
-    <!-- نافذة تسجيل الدخول مع زر Google الرسمي -->
+    <!-- نافذة تسجيل الدخول مع زر Google المباشر -->
     <div id="modal-auth" class="modal-overlay">
         <div class="modal">
             <h3 style="margin-bottom: 0.4rem; text-align: center;">تسجيل الدخول / إنشاء حساب</h3>
             <p style="font-size:0.8rem; color:var(--text-muted); text-align: center; margin-bottom:1.2rem;">اختر الطريقة الأنسب لك للمتابعة</p>
 
-            <!-- زر Google المباشر -->
+            <!-- زر Google المباشر بالمعرف المحدث -->
             <div style="display: flex; justify-content: center; margin-bottom: 1.2rem;">
                 <div id="g_id_onload"
                      data-client_id="{{ google_client_id }}"
@@ -2511,7 +2511,6 @@ def api_auth_google():
         return jsonify({"status": "error", "message": "رمز التحقق مفقود"}), 400
 
     try:
-        # التحقق من صحة التوكن مباشرة من خوادم Google الرسمية
         verify_url = f"https://oauth2.googleapis.com/tokeninfo?id_token={token}"
         resp = requests.get(verify_url, timeout=10)
         if resp.status_code != 200:
@@ -2534,7 +2533,6 @@ def api_auth_google():
             is_admin = 1 if is_master_admin else 0
             vip_lvl = "VIPmax" if is_master_admin else "auto"
             bal = 100000.0 if is_master_admin else 0.0
-            # كلمة مرور عشوائية لأن الدخول يتم عبر Google
             dummy_hash = generate_password_hash(str(uuid.uuid4()))
 
             c.execute("""INSERT INTO users(username, password, balance, is_admin, vip_level) 
