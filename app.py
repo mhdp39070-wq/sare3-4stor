@@ -34,10 +34,10 @@ DB_HOST = os.environ.get("DB_HOST", "aws-1-eu-west-1.pooler.supabase.com")
 DB_PORT = int(os.environ.get("DB_PORT", 6543))
 DB_NAME = os.environ.get("DB_NAME", "postgres")
 
-# مسار الشعار المباشر عبر السيرفر الداخلي لضمان التوافق مع PWA
+# مسار الشعار المحلي المتوافق مع شروط تثبيت PWA
 APP_LOGO_URL = "/app-icon.png"
 
-# الرابط السحابي للصورة الثالثة
+# الرابط المباشر لشعار المتجر
 REMOTE_LOGO_SOURCE = "https://i.postimg.cc/G3Z6n4Zx/file-0000000036d48207b1eaea5203b612a8.png"
 
 http_session = requests.Session()
@@ -930,14 +930,14 @@ HTML_TEMPLATE = """
         .pwa-install-banner {
             display: none;
             background: var(--card-bg);
-            border: 1px solid var(--neon-green-dark);
-            border-radius: 16px;
-            padding: 0.75rem 1rem;
-            margin-bottom: 1rem;
+            border: 1.5px solid var(--neon-green-dark);
+            border-radius: 18px;
+            padding: 0.85rem 1.1rem;
+            margin-bottom: 1.2rem;
             align-items: center;
             justify-content: space-between;
             gap: 0.8rem;
-            box-shadow: 0 4px 16px var(--neon-glow);
+            box-shadow: 0 8px 24px var(--neon-glow);
         }
     </style>
 </head>
@@ -1032,16 +1032,16 @@ HTML_TEMPLATE = """
 
     <div class="container">
 
-        <!-- شريط تثبيت التطبيق PWA المباشر -->
+        <!-- زر وشريط التثبيت المباشر للتطبيق PWA -->
         <div id="pwa-install-box" class="pwa-install-banner">
-            <div style="display:flex; align-items:center; gap:0.6rem;">
-                <img src="{{ app_logo }}" style="width:36px; height:36px; border-radius:50%; object-fit:cover; border:1px solid var(--neon-green-dark);">
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+                <img src="{{ app_logo }}" style="width:42px; height:42px; border-radius:50%; object-fit:cover; border:2px solid var(--neon-green-dark);">
                 <div>
-                    <b style="font-size:0.88rem; display:block;">تثبيت تطبيق SARE3 STOR</b>
-                    <span style="font-size:0.75rem; color:var(--text-muted);">ثبته مباشرة على هاتفك لتجربة كاملة وسريعة</span>
+                    <b style="font-size:0.95rem; display:block; color:var(--text-dark);">تثبيت تطبيق SARE3 STOR</b>
+                    <span style="font-size:0.78rem; color:var(--text-muted);">ثبته مباشرة كبرنامج مستقل على هاتفك</span>
                 </div>
             </div>
-            <button class="btn btn-green" onclick="installAppDirectly()" style="padding:0.4rem 0.9rem; font-size:0.8rem;">تثبيت</button>
+            <button class="btn btn-green" onclick="installAppDirectly()" style="padding:0.5rem 1.1rem; font-size:0.85rem;">تثبيت الآن</button>
         </div>
 
         <main id="sec-store">
@@ -1692,6 +1692,7 @@ HTML_TEMPLATE = """
         const totalSlides = 3;
         let slideTimer = null;
 
+        // التقاط حدث التثبيت وتفعيل الزر والشريط
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
@@ -1704,8 +1705,8 @@ HTML_TEMPLATE = """
         async function installAppDirectly() {
             if (deferredPrompt) {
                 deferredPrompt.prompt();
-                const choiceResult = await deferredPrompt.userChoice;
-                if (choiceResult.outcome === 'accepted') {
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
                     const pwaBox = document.getElementById('pwa-install-box');
                     if (pwaBox) pwaBox.style.display = 'none';
                     const drawerBtn = document.getElementById('drawer-install-btn-container');
@@ -1713,7 +1714,7 @@ HTML_TEMPLATE = """
                 }
                 deferredPrompt = null;
             } else {
-                alert('لتثبيت التطبيق على جهازك: اضغط على خيارات المتصفح (⋮) ثم اختر "تثبيت التطبيق".');
+                alert('لتثبيت التطبيق على جهازك: افتح خيارات المتصفح (⋮) ثم اضغط "تثبيت التطبيق".');
             }
         }
 
@@ -2853,7 +2854,7 @@ HTML_TEMPLATE = """
 """
 
 
-# ================= مسارات الأيقونات المباشرة للسيرفر الداخلي (حل مشكلة التثبيت) =================
+# ================= خدمة الأيقونة محلياً =================
 _cached_logo_bytes = None
 
 def get_logo_bytes():
@@ -2879,32 +2880,44 @@ def serve_app_icon():
     return redirect(REMOTE_LOGO_SOURCE)
 
 
-# ================= مسارات Service Worker و Manifest =================
+# ================= مسارات Service Worker و Manifest المعتمدة من Google PWA =================
 @app.route("/manifest.json")
 def pwa_manifest():
     manifest_data = {
-        "id": "/",
         "name": "SARE3 STOR",
         "short_name": "SARE3 STOR",
-        "description": "متجر سريع ستور لشحن الألعاب والتطبيقات والبطاقات الرقمية",
         "start_url": "/",
         "scope": "/",
+        "id": "/",
         "display": "standalone",
-        "orientation": "portrait",
         "background_color": "#000000",
         "theme_color": "#000000",
+        "orientation": "portrait-primary",
+        "prefer_related_applications": False,
         "icons": [
             {
                 "src": "/app-icon-192.png",
                 "sizes": "192x192",
                 "type": "image/png",
-                "purpose": "any maskable"
+                "purpose": "any"
+            },
+            {
+                "src": "/app-icon-192.png",
+                "sizes": "192x192",
+                "type": "image/png",
+                "purpose": "maskable"
             },
             {
                 "src": "/app-icon-512.png",
                 "sizes": "512x512",
                 "type": "image/png",
-                "purpose": "any maskable"
+                "purpose": "any"
+            },
+            {
+                "src": "/app-icon-512.png",
+                "sizes": "512x512",
+                "type": "image/png",
+                "purpose": "maskable"
             }
         ]
     }
@@ -2916,54 +2929,46 @@ def pwa_manifest():
 @app.route("/sw.js")
 def service_worker():
     sw_code = """
-    const CACHE_NAME = 'sare3-pwa-v1';
-    const CORE_ASSETS = [
+    const CACHE_NAME = 'sare3-cache-v4';
+    const STATIC_FILES = [
         '/',
         '/manifest.json',
+        '/app-icon.png',
         '/app-icon-192.png',
-        '/app-icon-512.png',
-        '/app-icon.png'
+        '/app-icon-512.png'
     ];
 
-    self.addEventListener('install', (event) => {
+    self.addEventListener('install', (e) => {
         self.skipWaiting();
-        event.waitUntil(
-            caches.open(CACHE_NAME).then((cache) => {
-                return cache.addAll(CORE_ASSETS).catch(() => {});
-            })
+        e.waitUntil(
+            caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_FILES))
         );
     });
 
-    self.addEventListener('activate', (event) => {
-        event.waitUntil(
+    self.addEventListener('activate', (e) => {
+        e.waitUntil(
             caches.keys().then((keys) => {
                 return Promise.all(
-                    keys.map((key) => {
-                        if (key !== CACHE_NAME) return caches.delete(key);
+                    keys.map((k) => {
+                        if (k !== CACHE_NAME) return caches.delete(k);
                     })
                 );
             }).then(() => clients.claim())
         );
     });
 
-    // استجابة fetch المتوافقة تماماً مع معايير PWA في Chrome Android
     self.addEventListener('fetch', (event) => {
         if (event.request.mode === 'navigate') {
             event.respondWith(
-                fetch(event.request).catch(() => {
-                    return caches.match('/') || caches.match(event.request);
-                })
+                fetch(event.request).catch(() => caches.match('/') || caches.match(event.request))
             );
             return;
         }
         event.respondWith(
-            fetch(event.request).catch(() => {
-                return caches.match(event.request);
-            })
+            fetch(event.request).catch(() => caches.match(event.request))
         );
     });
 
-    // حلقة جلب خلفية مستمرة تتفقد الإشعارات
     async function checkBackgroundNotifications() {
         try {
             const res = await fetch('/api/notifications/poll');
@@ -2973,8 +2978,8 @@ def service_worker():
                     for (const n of notifs) {
                         await self.registration.showNotification(n.title, {
                             body: n.message,
-                            icon: '/app-icon-192.png',
-                            badge: '/app-icon-192.png',
+                            icon: '/app-icon.png',
+                            badge: '/app-icon.png',
                             vibrate: [400, 150, 400, 150, 400],
                             tag: 'sare3-bg-' + n.id,
                             renotify: true,
