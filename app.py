@@ -759,7 +759,6 @@ HTML_TEMPLATE = """
             display: flex; flex-direction: column; align-items: center;
         }
 
-        /* دويرة مستوى المستخدم */
         .vip-circle-avatar {
             width: 78px;
             height: 78px;
@@ -803,7 +802,6 @@ HTML_TEMPLATE = """
         }
         .drawer-menu-link:hover { background: rgba(0, 255, 102, 0.08); color: var(--neon-green-dark); }
 
-        /* زر تفعيل وتعطيل الوضع الداكن */
         .dark-mode-toggle-box {
             margin-top: auto;
             padding-top: 1rem;
@@ -879,7 +877,6 @@ HTML_TEMPLATE = """
             padding-right: 0.5rem; margin-bottom: 0.8rem; color: var(--text-dark);
         }
 
-        /* حاوية تنبيهات الإشعارات المنبثقة (Toast) */
         #notification-toast-container {
             position: fixed;
             top: 20px;
@@ -918,7 +915,6 @@ HTML_TEMPLATE = """
     <div id="drawer-panel" class="drawer-panel">
         {% if session.get('user_id') %}
             <div class="drawer-user-card">
-                <!-- الدويرة المميزة لمستوى المستخدم -->
                 <div class="vip-circle-avatar" title="مستوى الحساب">
                     <i class="fa-solid fa-crown"></i>
                     <span class="vip-circle-text">{{ vip_info.level }}</span>
@@ -951,6 +947,7 @@ HTML_TEMPLATE = """
             <li><a class="drawer-menu-link" onclick="toggleDrawer(); switchSection('store')"><i class="fa-solid fa-house" style="color:var(--neon-green-dark)"></i> <span>الرئيسية</span></a></li>
             <li><a class="drawer-menu-link" onclick="toggleDrawer(); switchSection('orders')"><i class="fa-solid fa-bag-shopping" style="color:var(--neon-green-dark)"></i> <span>طلباتي</span></a></li>
             <li><a class="drawer-menu-link" onclick="toggleDrawer(); switchSection('deposit')"><i class="fa-solid fa-wallet" style="color:var(--neon-green-dark)"></i> <span>المحفظة / إيداع</span></a></li>
+            <li><a class="drawer-menu-link" onclick="toggleDrawer(); switchSection('my-deposits')"><i class="fa-solid fa-money-bill-transfer" style="color:var(--neon-green-dark)"></i> <span>إيداعاتي</span></a></li>
         </ul>
 
         <div class="drawer-section-title">معلومات & دعم</div>
@@ -959,7 +956,6 @@ HTML_TEMPLATE = """
             <li><a class="drawer-menu-link" href="https://wa.me/{{ support_whatsapp }}" target="_blank"><i class="fa-brands fa-whatsapp" style="color:#16a34a"></i> <span>الدعم (واتساب)</span></a></li>
         </ul>
 
-        <!-- زر تفعيل وتعطيل الوضع الداكن أسفل القائمة الجانبية -->
         <div class="dark-mode-toggle-box">
             <button type="button" class="dark-mode-btn" onclick="toggleDarkMode()">
                 <span id="dark-mode-label"><i class="fa-solid fa-moon"></i> الوضع الداكن</span>
@@ -1001,7 +997,6 @@ HTML_TEMPLATE = """
             <div class="banners-carousel-wrapper">
                 <div class="banners-slides-container" id="carousel-track">
                     
-                    <!-- الشريحة 1 الأولى: أهلاً وسهلاً (الترحيب) -->
                     <div class="banner-slide-item slide-welcome">
                         <div class="slide-content-box">
                             <div class="slide-right-side">
@@ -1019,7 +1014,6 @@ HTML_TEMPLATE = """
                         </div>
                     </div>
 
-                    <!-- الشريحة 2 الثانية: واتساب -->
                     <a href="https://whatsapp.com/channel/0029Vb93bpHJP211DVO1ek1F" target="_blank" class="banner-slide-item slide-whatsapp">
                         <div class="slide-content-box">
                             <div class="slide-right-side">
@@ -1037,7 +1031,6 @@ HTML_TEMPLATE = """
                         </div>
                     </a>
 
-                    <!-- الشريحة 3 الثالثة: تيليجرام -->
                     <a href="https://t.me/SARE3_STOR" target="_blank" class="banner-slide-item slide-telegram">
                         <div class="slide-content-box">
                             <div class="slide-right-side">
@@ -1116,6 +1109,14 @@ HTML_TEMPLATE = """
             <div id="orders-container"></div>
         </section>
 
+        <!-- قسم إيداعاتي الجديد -->
+        <section id="sec-my-deposits" style="display: none;">
+            <div class="section-header">
+                <span class="section-title">سجل إيداعاتي</span>
+            </div>
+            <div id="my-deposits-container"></div>
+        </section>
+
         <section id="sec-deposit" style="display: none;">
             <div class="section-header">
                 <span class="section-title">شحن الرصيد</span>
@@ -1128,7 +1129,6 @@ HTML_TEMPLATE = """
                     </div>
 
                     <div id="dep-details-box" style="margin-bottom: 1.2rem;">
-                        <!-- بطاقة التعليمات المحسنة والواضحة -->
                         <div style="background: rgba(0, 255, 102, 0.08); border: 1.5px solid var(--neon-green-dark); border-radius: 14px; padding: 0.85rem 1rem; margin-bottom: 0.6rem;">
                             <div style="font-weight: 800; font-size: 0.86rem; color: var(--neon-green-dark); margin-bottom: 0.3rem; display: flex; align-items: center; gap: 0.4rem;">
                                 <i class="fa-solid fa-circle-info"></i>
@@ -1137,7 +1137,6 @@ HTML_TEMPLATE = """
                             <p id="dep-method-desc" style="font-size: 0.9rem; color: var(--text-dark); font-weight: 700; line-height: 1.5; white-space: pre-line;"></p>
                         </div>
 
-                        <!-- الحساب / الرقم للتحويل -->
                         <div style="background: var(--input-bg); border: 1.5px dashed var(--border-light); border-radius: 14px; padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center;">
                             <div>
                                 <span style="font-size: 0.75rem; color: var(--text-muted); display: block; font-weight: 700;">الرقم / الحساب المحول إليه:</span>
@@ -1641,6 +1640,15 @@ HTML_TEMPLATE = """
         const totalSlides = 3;
         let slideTimer = null;
 
+        // تفعيل وطلب إذن إشعارات المتصفح والنظام
+        function initPushNotificationPermission() {
+            if ("Notification" in window) {
+                if (Notification.permission === "default") {
+                    Notification.requestPermission();
+                }
+            }
+        }
+
         // إدارة الوضع الداكن
         function initTheme() {
             const savedTheme = localStorage.getItem('sare3_theme') || 'light';
@@ -1674,15 +1682,15 @@ HTML_TEMPLATE = """
             }
         }
 
-        // نظام تنبيهات الإشعارات (صوتي وبصري)
+        // نظام تنبيهات الإشعارات (صوتي + بصري داخلي + إشعار هاتف ومتصفح نظامي)
         function playNotificationSound() {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-                osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1); // A5
+                osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+                osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1);
                 gain.gain.setValueAtTime(0.2, ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
                 osc.connect(gain);
@@ -1692,8 +1700,26 @@ HTML_TEMPLATE = """
             } catch(e) {}
         }
 
+        function triggerSystemNotification(title, body) {
+            if ("Notification" in window && Notification.permission === "granted") {
+                try {
+                    const opt = {
+                        body: body,
+                        icon: "https://cdn-icons-png.flaticon.com/512/1041/1041883.png",
+                        vibrate: [200, 100, 200]
+                    };
+                    new Notification(title, opt);
+                } catch(e) {}
+            }
+            if (navigator.vibrate) {
+                navigator.vibrate([200, 100, 200]);
+            }
+        }
+
         function showNotificationToast(title, message) {
             playNotificationSound();
+            triggerSystemNotification(title, message);
+
             const container = document.getElementById('notification-toast-container');
             const toast = document.createElement('div');
             toast.className = 'notif-toast';
@@ -1759,7 +1785,7 @@ HTML_TEMPLATE = """
         }
 
         function switchSection(sec) {
-            ['store', 'orders', 'deposit', 'admin'].forEach(s => {
+            ['store', 'orders', 'deposit', 'my-deposits', 'admin'].forEach(s => {
                 const el = document.getElementById(`sec-${s}`);
                 if (el) el.style.display = (s === sec) ? 'block' : 'none';
             });
@@ -1768,6 +1794,7 @@ HTML_TEMPLATE = """
             if (tabBtn) tabBtn.classList.add('active');
 
             if (sec === 'orders') loadUserOrders();
+            if (sec === 'my-deposits') loadUserDeposits();
             if (sec === 'deposit') loadPaymentMethods();
             if (sec === 'admin') loadAdminOverview();
         }
@@ -1816,6 +1843,7 @@ HTML_TEMPLATE = """
                 });
                 const d = await res.json();
                 if (d.status === 'ok') {
+                    initPushNotificationPermission();
                     location.reload();
                 } else {
                     alert(d.message);
@@ -2063,6 +2091,63 @@ HTML_TEMPLATE = """
             });
         }
 
+        // تحميل وعرض سجل إيداعات العميل بالكامل
+        async function loadUserDeposits() {
+            const container = document.getElementById('my-deposits-container');
+            container.innerHTML = '<div style="text-align:center; padding:2rem 0; color:#64748b;"><i class="fa-solid fa-spinner fa-spin"></i> جاري تحميل الإيداعات...</div>';
+            try {
+                const res = await fetch('/api/user/deposits');
+                const data = await res.json();
+                container.innerHTML = '';
+                if (!data.length) {
+                    container.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:2rem 0;">لا توجد أي إيداعات مسجلة لديك.</p>';
+                    return;
+                }
+                data.forEach(d => {
+                    let stBadge = '<span style="color:#eab308; font-weight:900;"><i class="fa-solid fa-clock"></i> قيد المراجعة</span>';
+                    let borderStyle = 'border-right: 4px solid #eab308;';
+                    if (d.status === 'accepted') {
+                        stBadge = '<span style="color:var(--neon-green-dark); font-weight:900;"><i class="fa-solid fa-circle-check"></i> مقبول ومضاف</span>';
+                        borderStyle = 'border-right: 4px solid var(--neon-green-dark);';
+                    } else if (d.status === 'rejected') {
+                        stBadge = '<span style="color:#ef4444; font-weight:900;"><i class="fa-solid fa-circle-xmark"></i> مرفوض</span>';
+                        borderStyle = 'border-right: 4px solid #ef4444;';
+                    }
+
+                    container.innerHTML += `
+                        <div class="receipt-card" style="${borderStyle}">
+                            <div class="receipt-row">
+                                <span class="receipt-label">وسيلة الدفع:</span>
+                                <span class="receipt-value">${d.method}</span>
+                            </div>
+                            <div class="receipt-row">
+                                <span class="receipt-label">المبلغ المحول:</span>
+                                <span class="receipt-value">${d.raw_amount} ${d.currency}</span>
+                            </div>
+                            <div class="receipt-row">
+                                <span class="receipt-label">المبلغ بالدولار:</span>
+                                <span class="receipt-value" style="color:var(--neon-green-dark); font-weight:900;">$${parseFloat(d.amount_usd).toFixed(2)}</span>
+                            </div>
+                            <div class="receipt-row">
+                                <span class="receipt-label">رقم المعاملة:</span>
+                                <span class="receipt-value" style="font-family:monospace; direction:ltr;">${d.trans_id}</span>
+                            </div>
+                            <div class="receipt-row">
+                                <span class="receipt-label">حالة العملية:</span>
+                                <span class="receipt-value">${stBadge}</span>
+                            </div>
+                            <div class="receipt-row">
+                                <span class="receipt-label">التاريخ والوقت:</span>
+                                <span class="receipt-value" style="font-size:0.75rem; color:var(--text-muted); direction:ltr;">${d.created_at || '—'}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch(e) {
+                container.innerHTML = '<p style="text-align:center; color:#ef4444; padding:2rem 0;">حدث خطأ في جلب بيانات الإيداع.</p>';
+            }
+        }
+
         function safeCopyToClipboard(text) {
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(text).then(() => {
@@ -2148,6 +2233,7 @@ HTML_TEMPLATE = """
 
         async function submitDeposit(e) {
             e.preventDefault();
+            initPushNotificationPermission();
             const curr = document.getElementById('dep-currency-sel').value;
             const amount = parseFloat(document.getElementById('dep-amount').value || 0);
             const res = await fetch('/api/deposit/submit', {
@@ -2163,7 +2249,7 @@ HTML_TEMPLATE = """
             const d = await res.json();
             if (d.status === 'ok') {
                 alert('تم إرسال الطلب بنجاح، سيتم التحقق خلال وقت قصير');
-                switchSection('store');
+                switchSection('my-deposits');
             } else {
                 alert(d.message);
             }
@@ -2660,8 +2746,9 @@ HTML_TEMPLATE = """
             loadCategories();
             restartSlideTimer();
             {% if session.get('user_id') %}
+            initPushNotificationPermission();
             pollNotifications();
-            setInterval(pollNotifications, 10000);
+            setInterval(pollNotifications, 7000);
             {% endif %}
         });
     </script>
@@ -2854,6 +2941,21 @@ def deposit_submit():
 
     conn.commit()
     return jsonify({"status": "ok"})
+
+
+# مسار جلب إيداعات المستخدم الخاصة به (المقبولة، المرفوضة، والمعلقة)
+@app.route("/api/user/deposits")
+@login_required
+def api_user_deposits():
+    conn = get_db()
+    c = get_cursor(conn)
+    c.execute("""SELECT id, method, trans_id, amount_usd, raw_amount, currency, status, 
+                        TO_CHAR(created_at, 'YYYY-MM-DD HH24:MI') as created_at
+                 FROM deposits 
+                 WHERE user_id=%s 
+                 ORDER BY id DESC""", (session["user_id"],))
+    rows = [dict(r) for r in c.fetchall()]
+    return jsonify(rows)
 
 
 @app.route("/api/notifications/poll")
