@@ -34,8 +34,8 @@ DB_HOST = os.environ.get("DB_HOST", "aws-1-eu-west-1.pooler.supabase.com")
 DB_PORT = int(os.environ.get("DB_PORT", 6543))
 DB_NAME = os.environ.get("DB_NAME", "postgres")
 
-# رابط أيقونة وشعار المتجر الجديد
-APP_LOGO_URL = "https://i.ibb.co/3s9g7T6/sare3-logo.png"
+# رابط الأيقونة والشعار الجديد (الصورة الثالثة)
+APP_LOGO_URL = "https://i.ibb.co/68vcvzY/sare3-stor-logo.png"
 
 http_session = requests.Session()
 
@@ -444,6 +444,9 @@ HTML_TEMPLATE = """
     <link rel="manifest" href="/manifest.json">
     <link rel="icon" type="image/png" href="{{ app_logo }}">
     <link rel="apple-touch-icon" href="{{ app_logo }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#000000">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -920,6 +923,19 @@ HTML_TEMPLATE = """
             from { transform: translateX(-100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
+
+        .pwa-install-banner {
+            display: none;
+            background: var(--card-bg);
+            border: 1px solid var(--neon-green-dark);
+            border-radius: 16px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.8rem;
+            box-shadow: 0 4px 16px var(--neon-glow);
+        }
     </style>
 </head>
 <body>
@@ -963,6 +979,11 @@ HTML_TEMPLATE = """
             <li><a class="drawer-menu-link" onclick="toggleDrawer(); switchSection('orders')"><i class="fa-solid fa-bag-shopping" style="color:var(--neon-green-dark)"></i> <span>طلباتي</span></a></li>
             <li><a class="drawer-menu-link" onclick="toggleDrawer(); switchSection('deposit')"><i class="fa-solid fa-wallet" style="color:var(--neon-green-dark)"></i> <span>المحفظة / إيداع</span></a></li>
             <li><a class="drawer-menu-link" onclick="toggleDrawer(); switchSection('my-deposits')"><i class="fa-solid fa-money-bill-transfer" style="color:var(--neon-green-dark)"></i> <span>إيداعاتي</span></a></li>
+            <li id="drawer-install-btn-container" style="display: none;">
+                <a class="drawer-menu-link" onclick="installAppDirectly()">
+                    <i class="fa-solid fa-download" style="color:var(--neon-green-dark)"></i> <span>تثبيت التطبيق</span>
+                </a>
+            </li>
         </ul>
 
         <div class="drawer-section-title">معلومات & دعم</div>
@@ -1007,6 +1028,18 @@ HTML_TEMPLATE = """
     </header>
 
     <div class="container">
+
+        <!-- شريط تثبيت التطبيق PWA -->
+        <div id="pwa-install-box" class="pwa-install-banner">
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+                <img src="{{ app_logo }}" style="width:36px; height:36px; border-radius:50%; object-fit:cover; border:1px solid var(--neon-green-dark);">
+                <div>
+                    <b style="font-size:0.88rem; display:block;">تثبيت تطبيق SARE3 STOR</b>
+                    <span style="font-size:0.75rem; color:var(--text-muted);">ثبته مباشرة على هاتفك لتجربة أسرع</span>
+                </div>
+            </div>
+            <button class="btn btn-green" onclick="installAppDirectly()" style="padding:0.4rem 0.9rem; font-size:0.8rem;">تثبيت</button>
+        </div>
 
         <main id="sec-store">
             <div class="banners-carousel-wrapper">
@@ -1650,10 +1683,36 @@ HTML_TEMPLATE = """
         let currentLoadedProducts = [];
         let adminProductsList = [];
         let swRegistration = null;
+        let deferredPrompt = null;
 
         let currentSlide = 0;
         const totalSlides = 3;
         let slideTimer = null;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const pwaBox = document.getElementById('pwa-install-box');
+            if (pwaBox) pwaBox.style.display = 'flex';
+            const drawerBtn = document.getElementById('drawer-install-btn-container');
+            if (drawerBtn) drawerBtn.style.display = 'block';
+        });
+
+        async function installAppDirectly() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const choiceResult = await deferredPrompt.userChoice;
+                if (choiceResult.outcome === 'accepted') {
+                    const pwaBox = document.getElementById('pwa-install-box');
+                    if (pwaBox) pwaBox.style.display = 'none';
+                    const drawerBtn = document.getElementById('drawer-install-btn-container');
+                    if (drawerBtn) drawerBtn.style.display = 'none';
+                }
+                deferredPrompt = null;
+            } else {
+                alert('لتثبيت التطبيق على جهازك: اضغط على خيارات المتصفح (⋮) ثم اختر "تثبيت التطبيق" (Install App).');
+            }
+        }
 
         async function registerServiceWorker() {
             if ('serviceWorker' in navigator) {
@@ -1758,7 +1817,7 @@ HTML_TEMPLATE = """
             const toast = document.createElement('div');
             toast.className = 'notif-toast';
             toast.innerHTML = `
-                <img src="{{ app_logo }}" style="width:28px; height:28px; border-radius:50%;">
+                <img src="{{ app_logo }}" style="width:28px; height:28px; border-radius:50%; object-fit:cover;">
                 <div>
                     <b style="display:block; font-size:0.92rem; color:#fff;">${title}</b>
                     <span style="color:#94a3b8; font-size:0.82rem;">${message}</span>
@@ -2794,13 +2853,23 @@ HTML_TEMPLATE = """
 @app.route("/manifest.json")
 def pwa_manifest():
     manifest_data = {
+        "id": "/",
         "name": "SARE3 STOR",
-        "short_name": "SARE3",
+        "short_name": "SARE3 STOR",
+        "description": "متجر سريع ستور لشحن الألعاب والتطبيقات والبطاقات الرقمية",
         "start_url": "/",
+        "scope": "/",
         "display": "standalone",
+        "orientation": "portrait",
         "background_color": "#000000",
-        "theme_color": "#00ff66",
+        "theme_color": "#000000",
         "icons": [
+            {
+                "src": APP_LOGO_URL,
+                "sizes": "192x192",
+                "type": "image/png",
+                "purpose": "any maskable"
+            },
             {
                 "src": APP_LOGO_URL,
                 "sizes": "512x512",
@@ -2809,7 +2878,7 @@ def pwa_manifest():
             }
         ]
     }
-    return Response(json.dumps(manifest_data), mimetype="application/json")
+    return Response(json.dumps(manifest_data), mimetype="application/manifest+json")
 
 
 @app.route("/sw.js")
@@ -2824,6 +2893,14 @@ def service_worker():
 
     self.addEventListener('activate', (e) => {{
         e.waitUntil(clients.claim());
+    }});
+
+    self.addEventListener('fetch', (event) => {{
+        event.respondWith(
+            fetch(event.request).catch(() => {{
+                return caches.match(event.request);
+            }})
+        );
     }});
 
     // حلقة جلب خلفية مستمرة تتفقد الإشعارات الجديدة من السيرفر
@@ -2855,7 +2932,6 @@ def service_worker():
         }}
     }});
 
-    // بدء المراقبة المستقلة
     setInterval(checkBackgroundNotifications, 6000);
 
     self.addEventListener('notificationclick', (event) => {{
