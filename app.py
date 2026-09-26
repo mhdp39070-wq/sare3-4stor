@@ -34,6 +34,9 @@ DB_HOST = os.environ.get("DB_HOST", "aws-1-eu-west-1.pooler.supabase.com")
 DB_PORT = int(os.environ.get("DB_PORT", 6543))
 DB_NAME = os.environ.get("DB_NAME", "postgres")
 
+# رابط أيقونة وشعار المتجر الجديد
+APP_LOGO_URL = "https://i.ibb.co/3s9g7T6/sare3-logo.png"
+
 http_session = requests.Session()
 
 
@@ -439,7 +442,9 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SARE3 STOR | المتجر المباشر</title>
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#00ff66">
+    <link rel="icon" type="image/png" href="{{ app_logo }}">
+    <link rel="apple-touch-icon" href="{{ app_logo }}">
+    <meta name="theme-color" content="#000000">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -473,13 +478,21 @@ HTML_TEMPLATE = """
             padding: 0.65rem 0.85rem; display: flex; justify-content: space-between; align-items: center;
             box-shadow: 0 4px 15px rgba(0,0,0,0.03);
         }
-        .nav-right-box { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+        .nav-right-box { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
         .menu-burger-btn {
             background: none; border: none; font-size: 1.35rem; color: var(--text-dark);
             cursor: pointer; display: flex; align-items: center; justify-content: center;
             padding: 0.2rem;
         }
-        .brand-title { font-size: 1.15rem; font-weight: 900; color: var(--text-dark); text-decoration: none; white-space: nowrap; }
+        .nav-logo-img {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--neon-green-dark);
+            box-shadow: 0 0 10px var(--neon-glow);
+        }
+        .brand-title { font-size: 1.15rem; font-weight: 900; color: var(--text-dark); text-decoration: none; white-space: nowrap; display:flex; align-items:center; gap:0.4rem; }
         .brand-title span { color: var(--neon-green-dark); }
         .top-actions { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
 
@@ -562,6 +575,7 @@ HTML_TEMPLATE = """
             justify-content: center;
             font-size: 1.75rem;
             flex-shrink: 0;
+            overflow: hidden;
         }
         .slide-telegram .slide-icon-circle {
             background: #ffffff;
@@ -574,8 +588,7 @@ HTML_TEMPLATE = """
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
         }
         .slide-welcome .slide-icon-circle {
-            background: linear-gradient(135deg, rgba(0, 255, 102, 0.25), rgba(0, 204, 85, 0.05));
-            color: var(--neon-green);
+            background: #000;
             border: 1.5px solid var(--neon-green);
             box-shadow: 0 8px 20px rgba(0, 255, 102, 0.25);
         }
@@ -971,8 +984,8 @@ HTML_TEMPLATE = """
             <button class="menu-burger-btn" onclick="toggleDrawer()" title="القائمة">
                 <i class="fa-solid fa-bars"></i>
             </button>
+            <img src="{{ app_logo }}" alt="Logo" class="nav-logo-img">
             <a href="#" class="brand-title" onclick="switchSection('store')">
-                <i class="fa-solid fa-bolt" style="color: var(--neon-green-dark);"></i>
                 <span>SARE3 STOR</span>
             </a>
         </div>
@@ -1003,7 +1016,7 @@ HTML_TEMPLATE = """
                         <div class="slide-content-box">
                             <div class="slide-right-side">
                                 <div class="slide-icon-circle">
-                                    <i class="fa-solid fa-bolt"></i>
+                                    <img src="{{ app_logo }}" style="width:100%; height:100%; object-fit:cover;">
                                 </div>
                                 <div class="slide-text">
                                     <h3>أهلاً وسهلاً بكم في موقع</h3>
@@ -1111,7 +1124,6 @@ HTML_TEMPLATE = """
             <div id="orders-container"></div>
         </section>
 
-        <!-- قسم إيداعاتي -->
         <section id="sec-my-deposits" style="display: none;">
             <div class="section-header">
                 <span class="section-title">سجل إيداعاتي</span>
@@ -1643,29 +1655,28 @@ HTML_TEMPLATE = """
         const totalSlides = 3;
         let slideTimer = null;
 
-        // تسجيل Service Worker لنظام الإشعارات المستقل في الخلفية حتى بعد إغلاق المتصفح
         async function registerServiceWorker() {
             if ('serviceWorker' in navigator) {
                 try {
                     swRegistration = await navigator.serviceWorker.register('/sw.js');
-                    console.log('✅ ServiceWorker Registered');
+                    if (navigator.serviceWorker.controller) {
+                        navigator.serviceWorker.controller.postMessage({ type: 'START_POLLING' });
+                    }
                 } catch(e) {
-                    console.log('ServiceWorker registration failed', e);
+                    console.log('SW registration error', e);
                 }
             }
         }
 
-        // تفعيل وطلب إذن إشعارات المتصفح والنظام
         async function initPushNotificationPermission() {
             if ("Notification" in window) {
                 if (Notification.permission === "default") {
                     await Notification.requestPermission();
                 }
             }
-            registerServiceWorker();
+            await registerServiceWorker();
         }
 
-        // إدارة الوضع الداكن
         function initTheme() {
             const savedTheme = localStorage.getItem('sare3_theme') || 'light';
             if (savedTheme === 'dark') {
@@ -1698,7 +1709,6 @@ HTML_TEMPLATE = """
             }
         }
 
-        // نظام تنبيهات الإشعارات (صوتي + بصري داخلي + إشعار هاتف ومتصفح نظامي)
         function playNotificationSound() {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1720,14 +1730,13 @@ HTML_TEMPLATE = """
             if ("Notification" in window && Notification.permission === "granted") {
                 const opt = {
                     body: body,
-                    icon: "https://cdn-icons-png.flaticon.com/512/1041/1041883.png",
-                    badge: "https://cdn-icons-png.flaticon.com/512/1041/1041883.png",
+                    icon: "{{ app_logo }}",
+                    badge: "{{ app_logo }}",
                     vibrate: [300, 100, 300, 100, 300],
                     tag: 'sare3-alert-' + Date.now(),
                     renotify: true
                 };
 
-                // استخدام Service Worker لعرض الإشعار بالنظام حتى لو أغلقت الصفحة
                 if (swRegistration && swRegistration.showNotification) {
                     swRegistration.showNotification(title, opt);
                 } else if ('serviceWorker' in navigator) {
@@ -1749,7 +1758,7 @@ HTML_TEMPLATE = """
             const toast = document.createElement('div');
             toast.className = 'notif-toast';
             toast.innerHTML = `
-                <i class="fa-solid fa-bell" style="color:var(--neon-green); font-size:1.2rem;"></i>
+                <img src="{{ app_logo }}" style="width:28px; height:28px; border-radius:50%;">
                 <div>
                     <b style="display:block; font-size:0.92rem; color:#fff;">${title}</b>
                     <span style="color:#94a3b8; font-size:0.82rem;">${message}</span>
@@ -1868,7 +1877,7 @@ HTML_TEMPLATE = """
                 });
                 const d = await res.json();
                 if (d.status === 'ok') {
-                    initPushNotificationPermission();
+                    await initPushNotificationPermission();
                     location.reload();
                 } else {
                     alert(d.message);
@@ -2257,7 +2266,7 @@ HTML_TEMPLATE = """
 
         async function submitDeposit(e) {
             e.preventDefault();
-            initPushNotificationPermission();
+            await initPushNotificationPermission();
             const curr = document.getElementById('dep-currency-sel').value;
             const amount = parseFloat(document.getElementById('dep-amount').value || 0);
             const res = await fetch('/api/deposit/submit', {
@@ -2772,7 +2781,7 @@ HTML_TEMPLATE = """
             {% if session.get('user_id') %}
             initPushNotificationPermission();
             pollNotifications();
-            setInterval(pollNotifications, 7000);
+            setInterval(pollNotifications, 5000);
             {% endif %}
         });
     </script>
@@ -2793,9 +2802,10 @@ def pwa_manifest():
         "theme_color": "#00ff66",
         "icons": [
             {
-                "src": "https://cdn-icons-png.flaticon.com/512/1041/1041883.png",
+                "src": APP_LOGO_URL,
                 "sizes": "512x512",
-                "type": "image/png"
+                "type": "image/png",
+                "purpose": "any maskable"
             }
         ]
     }
@@ -2804,26 +2814,61 @@ def pwa_manifest():
 
 @app.route("/sw.js")
 def service_worker():
-    sw_code = """
-    self.addEventListener('install', (e) => {
+    # كود Service Worker يعمل في خلفية النظام حتى بعد إغلاق المتصفح أو التطبيق
+    sw_code = f"""
+    const LOGO = '{APP_LOGO_URL}';
+
+    self.addEventListener('install', (e) => {{
         self.skipWaiting();
-    });
+    }});
 
-    self.addEventListener('activate', (e) => {
+    self.addEventListener('activate', (e) => {{
         e.waitUntil(clients.claim());
-    });
+    }});
 
-    self.addEventListener('notificationclick', (event) => {
+    // حلقة جلب خلفية مستمرة تتفقد الإشعارات الجديدة من السيرفر
+    async function checkBackgroundNotifications() {{
+        try {{
+            const res = await fetch('/api/notifications/poll');
+            if (res.ok) {{
+                const notifs = await res.json();
+                if (Array.isArray(notifs) && notifs.length > 0) {{
+                    for (const n of notifs) {{
+                        await self.registration.showNotification(n.title, {{
+                            body: n.message,
+                            icon: LOGO,
+                            badge: LOGO,
+                            vibrate: [400, 150, 400, 150, 400],
+                            tag: 'sare3-bg-' + n.id,
+                            renotify: true,
+                            data: {{ url: '/' }}
+                        }});
+                    }}
+                }}
+            }}
+        }} catch(e) {{}}
+    }}
+
+    self.addEventListener('message', (event) => {{
+        if (event.data && event.data.type === 'START_POLLING') {{
+            setInterval(checkBackgroundNotifications, 6000);
+        }}
+    }});
+
+    // بدء المراقبة المستقلة
+    setInterval(checkBackgroundNotifications, 6000);
+
+    self.addEventListener('notificationclick', (event) => {{
         event.notification.close();
         event.waitUntil(
-            clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-                if (clientList.length > 0) {
+            clients.matchAll({{ type: 'window', includeUncontrolled: true }}).then((clientList) => {{
+                if (clientList.length > 0) {{
                     return clientList[0].focus();
-                }
+                }}
                 return clients.openWindow('/');
-            })
+            }})
         );
-    });
+    }});
     """
     return Response(sw_code, mimetype="application/javascript")
 
@@ -2847,6 +2892,7 @@ def index():
         HTML_TEMPLATE,
         user=user,
         vip_info=vip_info,
+        app_logo=APP_LOGO_URL,
         admin_email=ADMIN_EMAIL,
         exchange_rate=float(settings.get("exchange_rate", 15000)),
         support_telegram=settings.get("support_telegram", "SARE3_STOR_Support"),
@@ -3001,7 +3047,7 @@ def deposit_submit():
                  VALUES(%s, %s, %s, %s, %s, %s)""",
               (session["user_id"], method, trans_id, amount_usd, raw_amount, currency))
     
-    # إرسال إشعار فوري لجميع المشرفين (Admin) بأن هناك طلب شحن جديد
+    # إرسال إشعار فوري لجميع المشرفين (Admin)
     c.execute("SELECT id FROM users WHERE is_admin=1")
     admin_users = c.fetchall()
     client_name = session.get("username", "عميل")
@@ -3014,7 +3060,6 @@ def deposit_submit():
     return jsonify({"status": "ok"})
 
 
-# مسار جلب إيداعات المستخدم الخاصة به (المقبولة، المرفوضة، والمعلقة)
 @app.route("/api/user/deposits")
 @login_required
 def api_user_deposits():
