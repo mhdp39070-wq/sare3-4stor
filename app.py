@@ -185,6 +185,15 @@ def init_db():
             created_at TIMESTAMP DEFAULT NOW()
         )""")
 
+        c.execute("""CREATE TABLE IF NOT EXISTS notifications (
+            id SERIAL PRIMARY KEY,
+            user_id INT,
+            title TEXT,
+            message TEXT,
+            is_read INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT NOW()
+        )""")
+
         default_settings = [
             ('store_status', 'open'),
             ('store_margin_percent', '0'),
@@ -336,6 +345,21 @@ def check_if_requires_id(product_name, category_name=""):
     return 1
 
 
+def send_system_notification(user_id, title, message, conn=None):
+    try:
+        need_close = False
+        if conn is None:
+            conn = create_raw_connection()
+            need_close = True
+        c = get_cursor(conn)
+        c.execute("""INSERT INTO notifications(user_id, title, message) VALUES(%s, %s, %s)""", (user_id, title, message))
+        conn.commit()
+        if need_close:
+            conn.close()
+    except Exception as e:
+        print(f"❌ خطأ إرسال الإشعار: {e}")
+
+
 def login_required(f):
     @wraps(f)
     def dec(*args, **kwargs):
@@ -427,13 +451,23 @@ HTML_TEMPLATE = """
             --neon-glow: rgba(0, 255, 102, 0.28);
             --border-light: #e2e8f0;
             --accent-red: #ef4444;
+            --input-bg: #f8fafc;
+        }
+
+        body.dark-mode {
+            --bg-page: #000000;
+            --card-bg: #09090b;
+            --text-dark: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-light: #27272a;
+            --input-bg: #121215;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Cairo', sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background-color: var(--bg-page); color: var(--text-dark); min-height: 100vh; padding-bottom: 90px; overflow-x: hidden; }
+        body { background-color: var(--bg-page); color: var(--text-dark); min-height: 100vh; padding-bottom: 90px; overflow-x: hidden; transition: background-color 0.3s ease, color 0.3s ease; }
 
         .top-navbar {
-            background: #ffffff; border-bottom: 1px solid var(--border-light); position: sticky; top: 0; z-index: 100;
+            background: var(--card-bg); border-bottom: 1px solid var(--border-light); position: sticky; top: 0; z-index: 100;
             padding: 0.65rem 0.85rem; display: flex; justify-content: space-between; align-items: center;
             box-shadow: 0 4px 15px rgba(0,0,0,0.03);
         }
@@ -448,7 +482,7 @@ HTML_TEMPLATE = """
         .top-actions { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
 
         .wallet-pill {
-            background: #f1f5f9; border: 1px solid var(--border-light); border-radius: 50px;
+            background: var(--input-bg); border: 1px solid var(--border-light); border-radius: 50px;
             padding: 0.25rem 0.4rem 0.25rem 0.65rem; display: flex; align-items: center; gap: 0.35rem;
             font-weight: 800; font-size: 0.85rem; color: var(--text-dark); white-space: nowrap;
         }
@@ -598,7 +632,7 @@ HTML_TEMPLATE = """
         }
 
         .marquee-seamless-container {
-            background: #ffffff;
+            background: var(--card-bg);
             border: 1px solid var(--border-light);
             border-radius: 50px;
             padding: 0.6rem 0;
@@ -622,7 +656,7 @@ HTML_TEMPLATE = """
             white-space: nowrap;
             font-size: 0.9rem;
             font-weight: 800;
-            color: #0f172a;
+            color: var(--text-dark);
         }
         @keyframes seamlessMove {
             0% { transform: translateX(0); }
@@ -630,31 +664,31 @@ HTML_TEMPLATE = """
         }
 
         .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; }
-        .section-title { font-size: 1.2rem; font-weight: 800; border-right: 4px solid var(--neon-green-dark); padding-right: 0.6rem; }
+        .section-title { font-size: 1.2rem; font-weight: 800; border-right: 4px solid var(--neon-green-dark); padding-right: 0.6rem; color: var(--text-dark); }
 
         .category-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.85rem; margin-bottom: 1.5rem; }
         .category-card {
-            background: #ffffff; border: 1px solid var(--border-light); border-radius: 18px; overflow: hidden;
+            background: var(--card-bg); border: 1px solid var(--border-light); border-radius: 18px; overflow: hidden;
             display: flex; flex-direction: column; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.03);
             transition: all 0.25s ease;
         }
         .category-card:hover { border-color: var(--neon-green-dark); box-shadow: 0 8px 20px var(--neon-glow); }
-        .category-img { width: 100%; height: 95px; object-fit: cover; background: #e2e8f0; }
-        .category-name { padding: 0.6rem 0.2rem; text-align: center; font-size: 0.82rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .category-img { width: 100%; height: 95px; object-fit: cover; background: var(--input-bg); }
+        .category-name { padding: 0.6rem 0.2rem; text-align: center; font-size: 0.82rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-dark); }
 
         .products-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.9rem; }
         .product-card {
-            background: #ffffff; border: 1px solid var(--border-light); border-radius: 20px; padding: 1rem;
+            background: var(--card-bg); border: 1px solid var(--border-light); border-radius: 20px; padding: 1rem;
             display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 4px 14px rgba(0,0,0,0.03);
             transition: all 0.25s ease;
         }
         .product-card:hover { border-color: var(--neon-green); transform: translateY(-2px); box-shadow: 0 8px 20px var(--neon-glow); }
-        .product-img { width: 100%; height: 90px; object-fit: cover; border-radius: 12px; margin-bottom: 0.5rem; background: #f1f5f9; }
+        .product-img { width: 100%; height: 90px; object-fit: cover; border-radius: 12px; margin-bottom: 0.5rem; background: var(--input-bg); }
         .product-title { font-size: 0.95rem; font-weight: 800; color: var(--text-dark); margin-top: 0.2rem; }
         .product-price { font-size: 1.2rem; font-weight: 900; color: var(--neon-green-dark); margin: 0.5rem 0; }
 
         .bottom-nav {
-            position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid var(--border-light);
+            position: fixed; bottom: 0; left: 0; right: 0; background: var(--card-bg); border-top: 1px solid var(--border-light);
             display: flex; justify-content: space-around; padding: 0.7rem 0; z-index: 100;
             box-shadow: 0 -4px 15px rgba(0,0,0,0.04);
         }
@@ -662,7 +696,7 @@ HTML_TEMPLATE = """
         .nav-tab.active { color: var(--neon-green-dark); }
 
         .receipt-card {
-            background: #ffffff; border-radius: 18px; padding: 1.2rem; margin-bottom: 1rem;
+            background: var(--card-bg); border-radius: 18px; padding: 1.2rem; margin-bottom: 1rem;
             border: 1px solid var(--border-light); border-right: 4px solid var(--neon-green-dark);
             box-shadow: 0 4px 12px rgba(0,0,0,0.03);
         }
@@ -672,7 +706,7 @@ HTML_TEMPLATE = """
         .receipt-value { font-weight: 800; color: var(--text-dark); }
 
         .btn {
-            background: var(--text-dark); color: #fff; border: none; padding: 0.55rem 0.9rem; border-radius: 14px;
+            background: var(--text-dark); color: var(--card-bg); border: none; padding: 0.55rem 0.9rem; border-radius: 14px;
             font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
             transition: all 0.2s ease; font-size: 0.85rem;
         }
@@ -683,77 +717,140 @@ HTML_TEMPLATE = """
         .btn-warning { background: #fef3c7; color: #d97706; }
         .btn-blue { background: #e0f2fe; color: #0284c7; }
 
+        body.dark-mode .btn-danger { background: #3f1212; color: #f87171; }
+        body.dark-mode .btn-warning { background: #3c2a05; color: #fbbf24; }
+        body.dark-mode .btn-blue { background: #082f49; color: #38bdf8; }
+
         .modal-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
             display: none; justify-content: center; align-items: center; z-index: 1000; padding: 1rem;
         }
         .modal {
-            background: #ffffff; border-radius: 24px; width: 100%; max-width: 480px; padding: 1.6rem;
-            max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            background: var(--card-bg); border: 1px solid var(--border-light); border-radius: 24px; width: 100%; max-width: 480px; padding: 1.6rem;
+            max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.4); color: var(--text-dark);
         }
 
         .form-group { margin-bottom: 1.1rem; }
         .form-group label { display: block; margin-bottom: 0.4rem; font-size: 0.85rem; font-weight: 700; color: var(--text-dark); }
         .form-input {
-            width: 100%; background: #f8fafc; border: 1px solid var(--border-light); border-radius: 14px;
-            padding: 0.8rem 1rem; outline: none; font-size: 0.95rem; font-weight: 600;
+            width: 100%; background: var(--input-bg); border: 1px solid var(--border-light); border-radius: 14px;
+            padding: 0.8rem 1rem; outline: none; font-size: 0.95rem; font-weight: 600; color: var(--text-dark);
         }
-        .form-input:focus { border-color: var(--neon-green-dark); background: #ffffff; }
+        .form-input:focus { border-color: var(--neon-green-dark); background: var(--card-bg); }
 
         .drawer-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px);
+            background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(4px);
             z-index: 1200; display: none; opacity: 0; transition: opacity 0.3s ease;
         }
         .drawer-overlay.active { display: block; opacity: 1; }
 
         .drawer-panel {
             position: fixed; top: 0; right: -320px; width: 300px; max-width: 85%; height: 100%;
-            background: #ffffff; z-index: 1300; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: var(--card-bg); z-index: 1300; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             overflow-y: auto; display: flex; flex-direction: column; padding: 1.2rem 1rem;
-            box-shadow: -5px 0 25px rgba(0,0,0,0.15); border-left: 3px solid var(--neon-green-dark);
+            box-shadow: -5px 0 25px rgba(0,0,0,0.25); border-left: 3px solid var(--neon-green-dark);
         }
         .drawer-panel.active { right: 0; }
 
         .drawer-user-card {
-            background: #fff; border: 1px solid #dcfce7; border-radius: 20px; padding: 1.2rem 1rem;
+            background: var(--card-bg); border: 1px solid var(--border-light); border-radius: 20px; padding: 1.2rem 1rem;
             text-align: center; margin-bottom: 0.8rem; box-shadow: 0 4px 15px rgba(0, 204, 0, 0.06);
+            display: flex; flex-direction: column; align-items: center;
         }
-        .drawer-username { font-weight: 900; font-size: 1rem; color: #0f172a; }
-        .drawer-email { font-size: 0.78rem; color: #64748b; margin-bottom: 0.8rem; }
+
+        /* دويرة مستوى المستخدم */
+        .vip-circle-avatar {
+            width: 78px;
+            height: 78px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0,255,102,0.15) 0%, rgba(0,0,0,0.02) 70%);
+            border: 2.5px solid var(--neon-green-dark);
+            box-shadow: 0 0 16px var(--neon-glow);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 0.75rem auto;
+            position: relative;
+        }
+        .vip-circle-avatar i {
+            color: #eab308;
+            font-size: 1.35rem;
+            margin-bottom: 2px;
+        }
+        .vip-circle-avatar .vip-circle-text {
+            color: var(--neon-green-dark);
+            font-weight: 900;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+
+        .drawer-username { font-weight: 900; font-size: 1rem; color: var(--text-dark); word-break: break-all; }
+        .drawer-email { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.8rem; word-break: break-all; }
         .drawer-stat-pill {
-            background: #ffffff; border: 1px solid #dcfce7; border-radius: 14px;
+            background: var(--input-bg); border: 1px solid var(--border-light); border-radius: 14px;
             padding: 0.7rem 1rem; margin-bottom: 0.6rem; display: flex; justify-content: space-between;
-            align-items: center; font-size: 0.85rem; font-weight: 800; color: #0f172a;
+            align-items: center; font-size: 0.85rem; font-weight: 800; color: var(--text-dark);
         }
         .drawer-stat-pill .val-green { color: var(--neon-green-dark); direction: ltr; font-weight: 900; }
-        .drawer-section-title { font-size: 0.8rem; font-weight: 800; color: #94a3b8; margin: 1rem 0.5rem 0.4rem; }
+        .drawer-section-title { font-size: 0.8rem; font-weight: 800; color: var(--text-muted); margin: 1rem 0.5rem 0.4rem; }
         .drawer-menu-list { list-style: none; display: flex; flex-direction: column; gap: 0.2rem; }
         .drawer-menu-link {
             display: flex; align-items: center; gap: 0.85rem; padding: 0.65rem 0.8rem;
-            color: #1e293b; text-decoration: none; font-size: 0.9rem; font-weight: 700;
+            color: var(--text-dark); text-decoration: none; font-size: 0.9rem; font-weight: 700;
             border-radius: 12px; cursor: pointer;
         }
-        .drawer-menu-link:hover { background: #f0fdf4; color: var(--neon-green-dark); }
+        .drawer-menu-link:hover { background: rgba(0, 255, 102, 0.08); color: var(--neon-green-dark); }
+
+        /* زر تفعيل وتعطيل الوضع الداكن */
+        .dark-mode-toggle-box {
+            margin-top: auto;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-light);
+        }
+        .dark-mode-btn {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--border-light);
+            color: var(--text-dark);
+            padding: 0.75rem 1rem;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 800;
+            font-size: 0.88rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .dark-mode-btn:hover {
+            border-color: var(--neon-green-dark);
+        }
 
         .vip-badge {
             display: inline-block; background: #ecfdf5; color: var(--neon-green-dark); border: 1px solid #a7f3d0;
             border-radius: 50px; padding: 0.2rem 0.7rem; font-size: 0.8rem; font-weight: 900; margin-bottom: 0.4rem;
         }
+        body.dark-mode .vip-badge {
+            background: #022c22;
+            border-color: #065f46;
+        }
 
         .admin-dashboard-wrapper { display: flex; flex-direction: column; gap: 1rem; width: 100%; }
         .admin-sidebar {
-            width: 100%; background: #ffffff; border: 1px solid var(--border-light);
+            width: 100%; background: var(--card-bg); border: 1px solid var(--border-light);
             border-radius: 18px; padding: 0.5rem; display: flex; flex-direction: row;
             gap: 0.5rem; overflow-x: auto; white-space: nowrap; scrollbar-width: none;
         }
         .admin-sidebar::-webkit-scrollbar { display: none; }
         .admin-sidebar-btn {
-            background: #f8fafc; border: 1px solid var(--border-light); border-radius: 12px;
-            color: #334155; font-size: 0.82rem; font-weight: 800; display: inline-flex;
+            background: var(--input-bg); border: 1px solid var(--border-light); border-radius: 12px;
+            color: var(--text-muted); font-size: 0.82rem; font-weight: 800; display: inline-flex;
             align-items: center; gap: 0.4rem; cursor: pointer; flex-shrink: 0; padding: 0.55rem 0.9rem;
         }
         .admin-sidebar-btn.active { background: #fee2e2; color: #ef4444; border-color: #fca5a5; }
+        body.dark-mode .admin-sidebar-btn.active { background: #450a0a; color: #f87171; border-color: #7f1d1d; }
 
         .admin-main-content { width: 100%; }
         .admin-stats-grid-row1 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.65rem; margin-bottom: 0.65rem; }
@@ -763,7 +860,7 @@ HTML_TEMPLATE = """
         @media (max-width: 500px) { .admin-stats-grid-row2 { grid-template-columns: 1fr; } }
 
         .adm-stat-box {
-            background: #ffffff; border: 1px solid var(--border-light); border-radius: 16px;
+            background: var(--card-bg); border: 1px solid var(--border-light); border-radius: 16px;
             padding: 0.8rem 0.5rem; text-align: center;
         }
         .adm-stat-title { font-size: 0.75rem; font-weight: 800; color: var(--text-muted); margin-bottom: 0.25rem; }
@@ -774,23 +871,60 @@ HTML_TEMPLATE = """
         @media (min-width: 750px) { .admin-action-cards-grid { grid-template-columns: repeat(3, 1fr); } }
 
         .adm-action-card {
-            background: #ffffff; border: 1px solid var(--border-light); border-radius: 18px;
+            background: var(--card-bg); border: 1px solid var(--border-light); border-radius: 18px;
             padding: 1rem; display: flex; flex-direction: column; justify-content: space-between;
         }
         .adm-card-header {
             font-size: 0.9rem; font-weight: 800; border-right: 3px solid #ef4444;
-            padding-right: 0.5rem; margin-bottom: 0.8rem; color: #0f172a;
+            padding-right: 0.5rem; margin-bottom: 0.8rem; color: var(--text-dark);
+        }
+
+        /* حاوية تنبيهات الإشعارات المنبثقة (Toast) */
+        #notification-toast-container {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+        .notif-toast {
+            background: #0f172a;
+            color: #ffffff;
+            border-right: 4px solid var(--neon-green-dark);
+            border-radius: 14px;
+            padding: 0.85rem 1.1rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.88rem;
+            pointer-events: auto;
+            animation: slideInNotif 0.35s ease;
+        }
+        @keyframes slideInNotif {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
     </style>
 </head>
 <body>
 
+    <div id="notification-toast-container"></div>
+
     <div id="drawer-overlay" class="drawer-overlay" onclick="toggleDrawer()"></div>
     <div id="drawer-panel" class="drawer-panel">
         {% if session.get('user_id') %}
             <div class="drawer-user-card">
+                <!-- الدويرة المميزة لمستوى المستخدم -->
+                <div class="vip-circle-avatar" title="مستوى الحساب">
+                    <i class="fa-solid fa-crown"></i>
+                    <span class="vip-circle-text">{{ vip_info.level }}</span>
+                </div>
+                
                 <div>
-                    <span class="vip-badge"><i class="fa-solid fa-crown"></i> {{ vip_info.level }}</span>
                     {% if vip_info.discount > 0 %}
                     <span class="vip-badge" style="background:#fef08a; color:#854d0e; border-color:#fde047;">خصم 1% مفعل</span>
                     {% endif %}
@@ -808,7 +942,7 @@ HTML_TEMPLATE = """
         {% endif %}
 
         <div class="drawer-stat-pill">
-            <span style="color: #64748b;">سعر الصرف</span>
+            <span style="color: var(--text-muted);">سعر الصرف</span>
             <span class="val-green">1 USD = <span id="drawer-exchange-rate">{{ "%.0f"|format(exchange_rate) }}</span> SYP</span>
         </div>
 
@@ -824,6 +958,14 @@ HTML_TEMPLATE = """
             <li><a class="drawer-menu-link" href="https://t.me/{{ support_telegram }}" target="_blank"><i class="fa-brands fa-telegram" style="color:#0284c7"></i> <span>الدعم (تيليجرام)</span></a></li>
             <li><a class="drawer-menu-link" href="https://wa.me/{{ support_whatsapp }}" target="_blank"><i class="fa-brands fa-whatsapp" style="color:#16a34a"></i> <span>الدعم (واتساب)</span></a></li>
         </ul>
+
+        <!-- زر تفعيل وتعطيل الوضع الداكن أسفل القائمة الجانبية -->
+        <div class="dark-mode-toggle-box">
+            <button type="button" class="dark-mode-btn" onclick="toggleDarkMode()">
+                <span id="dark-mode-label"><i class="fa-solid fa-moon"></i> الوضع الداكن</span>
+                <span id="dark-mode-status" style="color:var(--neon-green-dark); font-size:0.8rem;">تفعيل</span>
+            </button>
+        </div>
     </div>
 
     <header class="top-navbar">
@@ -858,25 +1000,26 @@ HTML_TEMPLATE = """
         <main id="sec-store">
             <div class="banners-carousel-wrapper">
                 <div class="banners-slides-container" id="carousel-track">
-                    <!-- الشريحة 1: تيليجرام -->
-                    <a href="https://t.me/SARE3_STOR" target="_blank" class="banner-slide-item slide-telegram">
+                    
+                    <!-- الشريحة 1 الأولى: أهلاً وسهلاً (الترحيب) -->
+                    <div class="banner-slide-item slide-welcome">
                         <div class="slide-content-box">
                             <div class="slide-right-side">
                                 <div class="slide-icon-circle">
-                                    <i class="fa-brands fa-telegram"></i>
+                                    <i class="fa-solid fa-bolt"></i>
                                 </div>
                                 <div class="slide-text">
-                                    <h3>اضغط هنا للانضمام إلى قناة</h3>
-                                    <h2>SARE3 STOR</h2>
+                                    <h3>أهلاً وسهلاً بكم في موقع</h3>
+                                    <h2><span>SARE3 STOR</span></h2>
                                 </div>
                             </div>
                             <div>
-                                <span class="slide-btn-badge"><i class="fa-solid fa-paper-plane"></i> انضمام</span>
+                                <span class="slide-btn-badge"><i class="fa-solid fa-bolt"></i> شحن فوري 24/7</span>
                             </div>
                         </div>
-                    </a>
+                    </div>
 
-                    <!-- الشريحة 2: واتساب -->
+                    <!-- الشريحة 2 الثانية: واتساب -->
                     <a href="https://whatsapp.com/channel/0029Vb93bpHJP211DVO1ek1F" target="_blank" class="banner-slide-item slide-whatsapp">
                         <div class="slide-content-box">
                             <div class="slide-right-side">
@@ -894,23 +1037,24 @@ HTML_TEMPLATE = """
                         </div>
                     </a>
 
-                    <!-- الشريحة 3: الترحيب بالمتجر -->
-                    <div class="banner-slide-item slide-welcome">
+                    <!-- الشريحة 3 الثالثة: تيليجرام -->
+                    <a href="https://t.me/SARE3_STOR" target="_blank" class="banner-slide-item slide-telegram">
                         <div class="slide-content-box">
                             <div class="slide-right-side">
                                 <div class="slide-icon-circle">
-                                    <i class="fa-solid fa-bolt"></i>
+                                    <i class="fa-brands fa-telegram"></i>
                                 </div>
                                 <div class="slide-text">
-                                    <h3>أهلاً وسهلاً بكم في موقع</h3>
-                                    <h2><span>SARE3 STOR</span></h2>
+                                    <h3>اضغط هنا للانضمام إلى قناة</h3>
+                                    <h2>SARE3 STOR</h2>
                                 </div>
                             </div>
                             <div>
-                                <span class="slide-btn-badge"><i class="fa-solid fa-bolt"></i> شحن فوري 24/7</span>
+                                <span class="slide-btn-badge"><i class="fa-solid fa-paper-plane"></i> انضمام</span>
                             </div>
                         </div>
-                    </div>
+                    </a>
+
                 </div>
 
                 <div class="carousel-indicators">
@@ -925,14 +1069,14 @@ HTML_TEMPLATE = """
                     <div class="marquee-seamless-block">
                         <span style="color:#eab308; font-size:1.05rem;">⭐</span> 
                         <span style="color:var(--neon-green-dark); font-weight:900;">سريع ستور:</span> 
-                        <span style="font-weight:800; color:#0f172a;">سرعة ← امان ← مصداقية ← اداء مميز و قوي🔥!</span>
-                        <span style="color:#64748b; font-weight:700;">• شحن فوري ومباشر 24/7 • أفضل الأسعار والخدمات الرقمية • دعم متواصل</span>
+                        <span style="font-weight:800;">سرعة ← امان ← مصداقية ← اداء مميز و قوي🔥!</span>
+                        <span style="color:var(--text-muted); font-weight:700;">• شحن فوري ومباشر 24/7 • أفضل الأسعار والخدمات الرقمية • دعم متواصل</span>
                     </div>
                     <div class="marquee-seamless-block">
                         <span style="color:#eab308; font-size:1.05rem;">⭐</span> 
                         <span style="color:var(--neon-green-dark); font-weight:900;">سريع ستور:</span> 
-                        <span style="font-weight:800; color:#0f172a;">سرعة ← امان ← مصداقية ← اداء مميز و قوي🔥!</span>
-                        <span style="color:#64748b; font-weight:700;">• شحن فوري ومباشر 24/7 • أفضل الأسعار والخدمات الرقمية • دعم متواصل</span>
+                        <span style="font-weight:800;">سرعة ← امان ← مصداقية ← اداء مميز و قوي🔥!</span>
+                        <span style="color:var(--text-muted); font-weight:700;">• شحن فوري ومباشر 24/7 • أفضل الأسعار والخدمات الرقمية • دعم متواصل</span>
                     </div>
                 </div>
             </div>
@@ -985,19 +1129,19 @@ HTML_TEMPLATE = """
 
                     <div id="dep-details-box" style="margin-bottom: 1.2rem;">
                         <!-- بطاقة التعليمات المحسنة والواضحة -->
-                        <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 14px; padding: 0.85rem 1rem; margin-bottom: 0.6rem;">
-                            <div style="font-weight: 800; font-size: 0.86rem; color: #166534; margin-bottom: 0.3rem; display: flex; align-items: center; gap: 0.4rem;">
-                                <i class="fa-solid fa-circle-info" style="color: #22c55e;"></i>
+                        <div style="background: rgba(0, 255, 102, 0.08); border: 1.5px solid var(--neon-green-dark); border-radius: 14px; padding: 0.85rem 1rem; margin-bottom: 0.6rem;">
+                            <div style="font-weight: 800; font-size: 0.86rem; color: var(--neon-green-dark); margin-bottom: 0.3rem; display: flex; align-items: center; gap: 0.4rem;">
+                                <i class="fa-solid fa-circle-info"></i>
                                 <span>تعليمات التحويل:</span>
                             </div>
-                            <p id="dep-method-desc" style="font-size: 0.9rem; color: #1e293b; font-weight: 700; line-height: 1.5; white-space: pre-line;"></p>
+                            <p id="dep-method-desc" style="font-size: 0.9rem; color: var(--text-dark); font-weight: 700; line-height: 1.5; white-space: pre-line;"></p>
                         </div>
 
                         <!-- الحساب / الرقم للتحويل -->
-                        <div style="background: #f8fafc; border: 1.5px dashed var(--border-light); border-radius: 14px; padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="background: var(--input-bg); border: 1.5px dashed var(--border-light); border-radius: 14px; padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center;">
                             <div>
                                 <span style="font-size: 0.75rem; color: var(--text-muted); display: block; font-weight: 700;">الرقم / الحساب المحول إليه:</span>
-                                <span id="dep-method-addr" style="font-weight: 900; direction: ltr; font-size: 1.05rem; color: #0f172a; font-family: monospace;"></span>
+                                <span id="dep-method-addr" style="font-weight: 900; direction: ltr; font-size: 1.05rem; color: var(--text-dark); font-family: monospace;"></span>
                             </div>
                             <button type="button" class="btn btn-green" style="padding: 0.35rem 0.85rem; font-size: 0.8rem;" onclick="copyAddr()">
                                 <i class="fa-solid fa-copy"></i> نسخ
@@ -1018,7 +1162,7 @@ HTML_TEMPLATE = """
                         <input type="number" step="any" id="dep-amount" class="form-input" placeholder="أدخل المبلغ" oninput="recalcDepositUsd()" required>
                     </div>
 
-                    <div style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 0.9rem; border-radius: 14px; margin-bottom: 1.2rem;">
+                    <div style="background: rgba(0, 255, 102, 0.08); border: 1px solid var(--neon-green-dark); padding: 0.9rem; border-radius: 14px; margin-bottom: 1.2rem;">
                         <span style="font-size: 0.9rem; color: var(--neon-green-dark); font-weight: 800;">
                             💵 الرصيد الذي سيُضاف لمحفظتك: $<span id="calculated-usd-display">0.00</span>
                         </span>
@@ -1292,13 +1436,13 @@ HTML_TEMPLATE = """
             <h3 id="buy-prod-name">تفاصيل الشراء</h3>
             <div id="buy-prod-price-unit" style="font-size: 0.95rem; font-weight: 800; color: var(--neon-green-dark); margin: 0.3rem 0;"></div>
             
-            <div id="buy-prod-desc-box" style="display:none; background: #f8fafc; border: 1px dashed var(--border-light); padding: 0.7rem; border-radius: 12px; margin-bottom: 0.8rem; font-size: 0.82rem; color: var(--text-muted); line-height: 1.4;">
+            <div id="buy-prod-desc-box" style="display:none; background: var(--input-bg); border: 1px dashed var(--border-light); padding: 0.7rem; border-radius: 12px; margin-bottom: 0.8rem; font-size: 0.82rem; color: var(--text-muted); line-height: 1.4;">
                 <b style="color:var(--text-dark); display:block; margin-bottom:0.2rem;"><i class="fa-solid fa-circle-info"></i> وصف المنتج:</b>
                 <span id="buy-prod-desc-text"></span>
             </div>
 
             {% if vip_info.discount > 0 %}
-            <div style="background:#ecfdf5; color:var(--neon-green-dark); border:1px solid #a7f3d0; padding:0.4rem 0.8rem; border-radius:12px; font-weight:800; font-size:0.82rem; margin-bottom:0.8rem;">
+            <div style="background: rgba(0, 255, 102, 0.08); color:var(--neon-green-dark); border:1px solid var(--neon-green-dark); padding:0.4rem 0.8rem; border-radius:12px; font-weight:800; font-size:0.82rem; margin-bottom:0.8rem;">
                 🎉 تم تطبيق خصم VIP بنسبة 1% تلقائياً!
             </div>
             {% endif %}
@@ -1318,11 +1462,11 @@ HTML_TEMPLATE = """
                     <input type="text" id="buy-player-id" class="form-input" placeholder="أدخل الآيدي المطلوب للشحن">
                 </div>
 
-                <div id="buy-digital-notice" style="display:none; background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; padding:0.65rem 0.8rem; border-radius:12px; font-size:0.82rem; font-weight:700; margin-bottom:1rem;">
+                <div id="buy-digital-notice" style="display:none; background: rgba(59, 130, 246, 0.08); border:1px solid #3b82f6; color:#3b82f6; padding:0.65rem 0.8rem; border-radius:12px; font-size:0.82rem; font-weight:700; margin-bottom:1rem;">
                     ⚡ هذا منتج رقمي/كود مباشر: سيصلك الكود مباشرة في "طلباتي" فور تأكيد الشراء.
                 </div>
 
-                <div style="background: #f1f5f9; padding: 0.9rem; border-radius: 14px; margin-bottom: 1.2rem; font-weight: 800;">
+                <div style="background: var(--input-bg); padding: 0.9rem; border-radius: 14px; margin-bottom: 1.2rem; font-weight: 800;">
                     الإجمالي النهائي: <span id="buy-total-display" style="color:var(--neon-green-dark); font-size: 1.2rem;">$0.00</span>
                 </div>
 
@@ -1496,6 +1640,92 @@ HTML_TEMPLATE = """
         let currentSlide = 0;
         const totalSlides = 3;
         let slideTimer = null;
+
+        // إدارة الوضع الداكن
+        function initTheme() {
+            const savedTheme = localStorage.getItem('sare3_theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+            updateDarkModeBtnUi();
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('sare3_theme', isDark ? 'dark' : 'light');
+            updateDarkModeBtnUi();
+        }
+
+        function updateDarkModeBtnUi() {
+            const isDark = document.body.classList.contains('dark-mode');
+            const statusEl = document.getElementById('dark-mode-status');
+            const labelEl = document.getElementById('dark-mode-label');
+            if (statusEl && labelEl) {
+                if (isDark) {
+                    labelEl.innerHTML = '<i class="fa-solid fa-sun" style="color:#f59e0b;"></i> الوضع المضيء';
+                    statusEl.innerText = 'مفعل (داكن)';
+                } else {
+                    labelEl.innerHTML = '<i class="fa-solid fa-moon"></i> الوضع الداكن';
+                    statusEl.innerText = 'معطل';
+                }
+            }
+        }
+
+        // نظام تنبيهات الإشعارات (صوتي وبصري)
+        function playNotificationSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+                osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1); // A5
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.4);
+            } catch(e) {}
+        }
+
+        function showNotificationToast(title, message) {
+            playNotificationSound();
+            const container = document.getElementById('notification-toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'notif-toast';
+            toast.innerHTML = `
+                <i class="fa-solid fa-bell" style="color:var(--neon-green); font-size:1.2rem;"></i>
+                <div>
+                    <b style="display:block; font-size:0.92rem; color:#fff;">${title}</b>
+                    <span style="color:#94a3b8; font-size:0.82rem;">${message}</span>
+                </div>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(-100%)';
+                setTimeout(() => toast.remove(), 400);
+            }, 6000);
+        }
+
+        async function pollNotifications() {
+            try {
+                const res = await fetch('/api/notifications/poll');
+                if (res.ok) {
+                    const notifs = await res.json();
+                    if (Array.isArray(notifs)) {
+                        notifs.forEach(n => {
+                            showNotificationToast(n.title, n.message);
+                        });
+                    }
+                }
+            } catch (err) {}
+        }
 
         function updateSlidePosition() {
             const track = document.getElementById('carousel-track');
@@ -1799,12 +2029,12 @@ HTML_TEMPLATE = """
                 } catch(e) {}
 
                 const replayHtml = o.replay_api ? `
-                    <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:12px; padding:0.75rem; margin-top:0.6rem;">
+                    <div style="background: rgba(0, 255, 102, 0.08); border:1px solid var(--neon-green-dark); border-radius:12px; padding:0.75rem; margin-top:0.6rem;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
-                            <span style="font-size:0.8rem; font-weight:800; color:#15803d;"><i class="fa-solid fa-box-open"></i> بيانات الحساب / الكود:</span>
+                            <span style="font-size:0.8rem; font-weight:800; color:var(--neon-green-dark);"><i class="fa-solid fa-box-open"></i> بيانات الحساب / الكود:</span>
                             <button type="button" class="btn btn-green copy-order-btn" style="padding:0.2rem 0.55rem; font-size:0.7rem;" data-clipboard-text="${encodeURIComponent(cleanReplay)}">نسخ البيانات</button>
                         </div>
-                        <div style="font-weight:900; font-size:0.92rem; color:#0f172a; word-break:break-all; direction:ltr; text-align:right; white-space:pre-line;">${cleanReplay}</div>
+                        <div style="font-weight:900; font-size:0.92rem; color:var(--text-dark); word-break:break-all; direction:ltr; text-align:right; white-space:pre-line;">${cleanReplay}</div>
                     </div>
                 ` : '';
 
@@ -1932,7 +2162,7 @@ HTML_TEMPLATE = """
             });
             const d = await res.json();
             if (d.status === 'ok') {
-                alert('✅ تم إرسال طلب الشحن بنجاح!');
+                alert('تم إرسال الطلب بنجاح، سيتم التحقق خلال وقت قصير');
                 switchSection('store');
             } else {
                 alert(d.message);
@@ -1948,10 +2178,10 @@ HTML_TEMPLATE = """
             }
             list.forEach(pm => {
                 container.innerHTML += `
-                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:0.8rem; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="background:var(--input-bg); border:1px solid var(--border-light); border-radius:14px; padding:0.8rem; display:flex; justify-content:space-between; align-items:center;">
                         <div>
-                            <div style="font-weight:800; font-size:0.9rem; color:#0f172a;">${pm.name}</div>
-                            <div style="font-size:0.75rem; color:#64748b; direction:ltr; text-align:right;">${pm.wallet_address}</div>
+                            <div style="font-weight:800; font-size:0.9rem; color:var(--text-dark);">${pm.name}</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted); direction:ltr; text-align:right;">${pm.wallet_address}</div>
                         </div>
                         <button class="btn btn-danger" style="padding:0.3rem 0.7rem; font-size:0.8rem;" onclick="deletePaymentMethod('${pm.code}')">
                             <i class="fa-solid fa-trash-can"></i> حذف
@@ -2100,11 +2330,11 @@ HTML_TEMPLATE = """
                 const prodList = document.getElementById('adm-products-manage-list');
                 prodList.innerHTML = '';
                 adminProductsList.forEach(p => {
-                    const descInfo = p.description ? `<div style="font-size:0.75rem; color:#475569; margin-top:0.25rem;"><i class="fa-solid fa-align-right"></i> ${p.description}</div>` : `<div style="font-size:0.75rem; color:#94a3b8; margin-top:0.25rem;">(لا يوجد وصف مضاف)</div>`;
+                    const descInfo = p.description ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;"><i class="fa-solid fa-align-right"></i> ${p.description}</div>` : `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">(لا يوجد وصف مضاف)</div>`;
                     const isIdRequired = (p.requires_player_id === undefined || p.requires_player_id === null || p.requires_player_id === 1);
                     const typeBadge = isIdRequired ? 
-                        `<span style="background:#ecfdf5; color:#15803d; border:1px solid #86efac; border-radius:8px; padding:0.15rem 0.5rem; font-size:0.72rem; font-weight:800;">🎯 يتطلب آيدي</span>` : 
-                        `<span style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; border-radius:8px; padding:0.15rem 0.5rem; font-size:0.72rem; font-weight:800;">⚡ كود مباشر بدون آيدي</span>`;
+                        `<span style="background:rgba(0,255,102,0.1); color:var(--neon-green-dark); border:1px solid var(--neon-green-dark); border-radius:8px; padding:0.15rem 0.5rem; font-size:0.72rem; font-weight:800;">🎯 يتطلب آيدي</span>` : 
+                        `<span style="background:rgba(59,130,246,0.1); color:#3b82f6; border:1px solid #3b82f6; border-radius:8px; padding:0.15rem 0.5rem; font-size:0.72rem; font-weight:800;">⚡ كود مباشر بدون آيدي</span>`;
 
                     prodList.innerHTML += `
                         <div class="receipt-card" style="padding:0.8rem; margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
@@ -2131,7 +2361,7 @@ HTML_TEMPLATE = """
                 if (usersTable) {
                     usersTable.innerHTML = '';
                     (d.all_users || []).forEach(u => {
-                        const vipBadge = u.vip_level && u.vip_level !== 'auto' ? `<span class="vip-badge" style="margin:0 4px;">${u.vip_level}</span>` : '<span style="color:#64748b; font-size:0.75rem;">(تلقائي)</span>';
+                        const vipBadge = u.vip_level && u.vip_level !== 'auto' ? `<span class="vip-badge" style="margin:0 4px;">${u.vip_level}</span>` : '<span style="color:var(--text-muted); font-size:0.75rem;">(تلقائي)</span>';
                         usersTable.innerHTML += `
                             <div class="receipt-row">
                                 <div>
@@ -2426,8 +2656,13 @@ HTML_TEMPLATE = """
         }
 
         window.addEventListener('DOMContentLoaded', () => {
+            initTheme();
             loadCategories();
             restartSlideTimer();
+            {% if session.get('user_id') %}
+            pollNotifications();
+            setInterval(pollNotifications, 10000);
+            {% endif %}
         });
     </script>
 </body>
@@ -2607,8 +2842,33 @@ def deposit_submit():
     c.execute("""INSERT INTO deposits(user_id, method, trans_id, amount_usd, raw_amount, currency) 
                  VALUES(%s, %s, %s, %s, %s, %s)""",
               (session["user_id"], method, trans_id, amount_usd, raw_amount, currency))
+    
+    # إرسال إشعار فوري لجميع المشرفين (Admin) بأن هناك طلب شحن جديد
+    c.execute("SELECT id FROM users WHERE is_admin=1")
+    admin_users = c.fetchall()
+    client_name = session.get("username", "عميل")
+    for adm in admin_users:
+        c.execute("""INSERT INTO notifications(user_id, title, message) 
+                     VALUES(%s, %s, %s)""",
+                  (adm["id"], "طلب إيداع جديد 💰", f"العميل {client_name} أرسل طلب شحن بقيمة ${amount_usd:.2f} ({raw_amount} {currency})"))
+
     conn.commit()
     return jsonify({"status": "ok"})
+
+
+@app.route("/api/notifications/poll")
+@login_required
+def api_notifications_poll():
+    conn = get_db()
+    c = get_cursor(conn)
+    c.execute("""SELECT id, title, message FROM notifications 
+                 WHERE user_id=%s AND is_read=0 
+                 ORDER BY id ASC""", (session["user_id"],))
+    notifs = c.fetchall()
+    if notifs:
+        c.execute("""UPDATE notifications SET is_read=1 WHERE user_id=%s AND is_read=0""", (session["user_id"],))
+        conn.commit()
+    return jsonify([dict(n) for n in notifs])
 
 
 @app.route("/api/order/create", methods=["POST"])
@@ -2876,9 +3136,11 @@ def api_adjust_balance():
     if action_type == "add":
         c.execute("UPDATE users SET balance = balance + %s WHERE username=%s", (amount, username))
         msg = f"تمت إضافة ${amount} لرصيد العميل"
+        send_system_notification(u["id"], "إيداع يدوي", f"تمت إضافة ${amount:.2f} إلى رصيدك بواسطة الإدارة", conn=conn)
     else:
         c.execute("UPDATE users SET balance = GREATEST(0.0, balance - %s) WHERE username=%s", (amount, username))
         msg = f"تم خصم ${amount} من رصيد العميل"
+        send_system_notification(u["id"], "خصم رصيد", f"تم خصم ${amount:.2f} من رصيدك بواسطة الإدارة", conn=conn)
 
     conn.commit()
     return jsonify({"status": "ok", "message": msg})
@@ -2943,8 +3205,22 @@ def api_verify_deposit():
             final_amt = amount if amount > 0 else dep["amount_usd"]
             c.execute("UPDATE users SET balance = balance + %s WHERE id=%s", (final_amt, dep["user_id"]))
             c.execute("UPDATE deposits SET status='accepted', amount_usd=%s WHERE id=%s", (final_amt, dep_id))
+            # إرسال إشعار فوري للعميل بالقبول
+            send_system_notification(
+                dep["user_id"],
+                "تم شحن رصيدك بنجاح ✅",
+                f"تمت الموافقة على طلب الشحن وإضافة ${final_amt:.2f} إلى محفظتك.",
+                conn=conn
+            )
         else:
             c.execute("UPDATE deposits SET status='rejected' WHERE id=%s", (dep_id,))
+            # إرسال إشعار فوري للعميل بالرفض
+            send_system_notification(
+                dep["user_id"],
+                "تم رفض طلب الشحن ❌",
+                "نأسف، تم رفض طلب الشحن الخاص بك. يرجى مراجعة رقم العملية أو التواصل مع الدعم الفني.",
+                conn=conn
+            )
         conn.commit()
     return jsonify({"status": "ok"})
 
