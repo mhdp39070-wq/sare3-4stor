@@ -8,7 +8,7 @@ from datetime import timedelta
 from functools import wraps
 import requests
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import Flask, request, jsonify, render_template_string, session, redirect, url_for, g
+from flask import Flask, request, jsonify, render_template_string, session, redirect, url_for, g, Response
 import pg8000.dbapi
 
 # ================= الإعدادات =================
@@ -438,6 +438,8 @@ HTML_TEMPLATE = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SARE3 STOR | المتجر المباشر</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#00ff66">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -1109,7 +1111,7 @@ HTML_TEMPLATE = """
             <div id="orders-container"></div>
         </section>
 
-        <!-- قسم إيداعاتي الجديد -->
+        <!-- قسم إيداعاتي -->
         <section id="sec-my-deposits" style="display: none;">
             <div class="section-header">
                 <span class="section-title">سجل إيداعاتي</span>
@@ -1635,18 +1637,32 @@ HTML_TEMPLATE = """
         let paymentMethods = [];
         let currentLoadedProducts = [];
         let adminProductsList = [];
+        let swRegistration = null;
 
         let currentSlide = 0;
         const totalSlides = 3;
         let slideTimer = null;
 
-        // تفعيل وطلب إذن إشعارات المتصفح والنظام
-        function initPushNotificationPermission() {
-            if ("Notification" in window) {
-                if (Notification.permission === "default") {
-                    Notification.requestPermission();
+        // تسجيل Service Worker لنظام الإشعارات المستقل في الخلفية حتى بعد إغلاق المتصفح
+        async function registerServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                try {
+                    swRegistration = await navigator.serviceWorker.register('/sw.js');
+                    console.log('✅ ServiceWorker Registered');
+                } catch(e) {
+                    console.log('ServiceWorker registration failed', e);
                 }
             }
+        }
+
+        // تفعيل وطلب إذن إشعارات المتصفح والنظام
+        async function initPushNotificationPermission() {
+            if ("Notification" in window) {
+                if (Notification.permission === "default") {
+                    await Notification.requestPermission();
+                }
+            }
+            registerServiceWorker();
         }
 
         // إدارة الوضع الداكن
@@ -1700,19 +1716,28 @@ HTML_TEMPLATE = """
             } catch(e) {}
         }
 
-        function triggerSystemNotification(title, body) {
+        async function triggerSystemNotification(title, body) {
             if ("Notification" in window && Notification.permission === "granted") {
-                try {
-                    const opt = {
-                        body: body,
-                        icon: "https://cdn-icons-png.flaticon.com/512/1041/1041883.png",
-                        vibrate: [200, 100, 200]
-                    };
+                const opt = {
+                    body: body,
+                    icon: "https://cdn-icons-png.flaticon.com/512/1041/1041883.png",
+                    badge: "https://cdn-icons-png.flaticon.com/512/1041/1041883.png",
+                    vibrate: [300, 100, 300, 100, 300],
+                    tag: 'sare3-alert-' + Date.now(),
+                    renotify: true
+                };
+
+                // استخدام Service Worker لعرض الإشعار بالنظام حتى لو أغلقت الصفحة
+                if (swRegistration && swRegistration.showNotification) {
+                    swRegistration.showNotification(title, opt);
+                } else if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.ready.then(reg => reg.showNotification(title, opt));
+                } else {
                     new Notification(title, opt);
-                } catch(e) {}
+                }
             }
             if (navigator.vibrate) {
-                navigator.vibrate([200, 100, 200]);
+                navigator.vibrate([300, 100, 300]);
             }
         }
 
@@ -2091,7 +2116,6 @@ HTML_TEMPLATE = """
             });
         }
 
-        // تحميل وعرض سجل إيداعات العميل بالكامل
         async function loadUserDeposits() {
             const container = document.getElementById('my-deposits-container');
             container.innerHTML = '<div style="text-align:center; padding:2rem 0; color:#64748b;"><i class="fa-solid fa-spinner fa-spin"></i> جاري تحميل الإيداعات...</div>';
@@ -2757,6 +2781,53 @@ HTML_TEMPLATE = """
 """
 
 
+# ================= مسارات Service Worker و Manifest =================
+@app.route("/manifest.json")
+def pwa_manifest():
+    manifest_data = {
+        "name": "SARE3 STOR",
+        "short_name": "SARE3",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#000000",
+        "theme_color": "#00ff66",
+        "icons": [
+            {
+                "src": "https://cdn-icons-png.flaticon.com/512/1041/1041883.png",
+                "sizes": "512x512",
+                "type": "image/png"
+            }
+        ]
+    }
+    return Response(json.dumps(manifest_data), mimetype="application/json")
+
+
+@app.route("/sw.js")
+def service_worker():
+    sw_code = """
+    self.addEventListener('install', (e) => {
+        self.skipWaiting();
+    });
+
+    self.addEventListener('activate', (e) => {
+        e.waitUntil(clients.claim());
+    });
+
+    self.addEventListener('notificationclick', (event) => {
+        event.notification.close();
+        event.waitUntil(
+            clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+                if (clientList.length > 0) {
+                    return clientList[0].focus();
+                }
+                return clients.openWindow('/');
+            })
+        );
+    });
+    """
+    return Response(sw_code, mimetype="application/javascript")
+
+
 # ================= مسارات الـ Backend و API =================
 @app.route("/")
 def index():
@@ -3307,7 +3378,6 @@ def api_verify_deposit():
             final_amt = amount if amount > 0 else dep["amount_usd"]
             c.execute("UPDATE users SET balance = balance + %s WHERE id=%s", (final_amt, dep["user_id"]))
             c.execute("UPDATE deposits SET status='accepted', amount_usd=%s WHERE id=%s", (final_amt, dep_id))
-            # إرسال إشعار فوري للعميل بالقبول
             send_system_notification(
                 dep["user_id"],
                 "تم شحن رصيدك بنجاح ✅",
@@ -3316,7 +3386,6 @@ def api_verify_deposit():
             )
         else:
             c.execute("UPDATE deposits SET status='rejected' WHERE id=%s", (dep_id,))
-            # إرسال إشعار فوري للعميل بالرفض
             send_system_notification(
                 dep["user_id"],
                 "تم رفض طلب الشحن ❌",
