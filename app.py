@@ -34,8 +34,8 @@ DB_HOST = os.environ.get("DB_HOST", "aws-1-eu-west-1.pooler.supabase.com")
 DB_PORT = int(os.environ.get("DB_PORT", 6543))
 DB_NAME = os.environ.get("DB_NAME", "postgres")
 
-# مسار اللوجو المباشر من داخل التطبيق لضمان عدم تلفه أو حظره
-APP_LOGO_URL = "/logo.png"
+# رابط الشعار والأيقونة المباشر الجديد
+APP_LOGO_URL = "https://i.postimg.cc/G3Z6n4Zx/file-0000000036d48207b1eaea5203b612a8.png"
 
 http_session = requests.Session()
 
@@ -706,7 +706,7 @@ HTML_TEMPLATE = """
         .product-price { font-size: 1.2rem; font-weight: 900; color: var(--neon-green-dark); margin: 0.5rem 0; }
 
         .bottom-nav {
-            position: fixed; bottom: 0; left: 0; right: 0; background: var(--card-bg); border-top: 1px solid var(--border-light);
+            position: fixed bottom: 0; left: 0; right: 0; background: var(--card-bg); border-top: 1px solid var(--border-light);
             display: flex; justify-content: space-around; padding: 0.7rem 0; z-index: 100;
             box-shadow: 0 -4px 15px rgba(0,0,0,0.04);
         }
@@ -1035,7 +1035,7 @@ HTML_TEMPLATE = """
                 <img src="{{ app_logo }}" style="width:36px; height:36px; border-radius:50%; object-fit:cover; border:1px solid var(--neon-green-dark);">
                 <div>
                     <b style="font-size:0.88rem; display:block;">تثبيت تطبيق SARE3 STOR</b>
-                    <span style="font-size:0.75rem; color:var(--text-muted);">ثبته مباشرة على هاتفك كتطبيق مستقل</span>
+                    <span style="font-size:0.75rem; color:var(--text-muted);">ثبته مباشرة على هاتفك لتجربة كاملة وسريعة</span>
                 </div>
             </div>
             <button class="btn btn-green" onclick="installAppDirectly()" style="padding:0.4rem 0.9rem; font-size:0.8rem;">تثبيت</button>
@@ -1718,7 +1718,7 @@ HTML_TEMPLATE = """
         async function registerServiceWorker() {
             if ('serviceWorker' in navigator) {
                 try {
-                    swRegistration = await navigator.serviceWorker.register('/sw.js?v=2026_final');
+                    swRegistration = await navigator.serviceWorker.register('/sw.js?v=2026_logo_fixed');
                     if (navigator.serviceWorker.controller) {
                         navigator.serviceWorker.controller.postMessage({ type: 'START_POLLING' });
                     }
@@ -2851,26 +2851,6 @@ HTML_TEMPLATE = """
 """
 
 
-# ================= مسار الشعار الداخلي =================
-@app.route("/logo.png")
-def serve_logo():
-    # جلب صورة الشعار الثالثة وإعطاؤها استجابة سريعة مع تخزين مؤقت
-    target_img_url = "https://images2.imgbox.com/3c/62/N8g1z5g0_o.png"
-    try:
-        r = http_session.get(target_img_url, timeout=10)
-        if r.status_code == 200:
-            return Response(r.content, mimetype="image/png")
-    except Exception:
-        pass
-    # رابط احتياطي بديل
-    fallback_url = "https://i.ibb.co/L9R7PqT/sare3-stor-logo.png"
-    try:
-        r2 = http_session.get(fallback_url, timeout=10)
-        return Response(r2.content, mimetype="image/png")
-    except Exception:
-        return ("", 404)
-
-
 # ================= مسارات Service Worker و Manifest =================
 @app.route("/manifest.json")
 def pwa_manifest():
@@ -2887,13 +2867,13 @@ def pwa_manifest():
         "theme_color": "#000000",
         "icons": [
             {
-                "src": "/logo.png",
+                "src": APP_LOGO_URL,
                 "sizes": "192x192",
                 "type": "image/png",
                 "purpose": "any maskable"
             },
             {
-                "src": "/logo.png",
+                "src": APP_LOGO_URL,
                 "sizes": "512x512",
                 "type": "image/png",
                 "purpose": "any maskable"
@@ -2905,84 +2885,74 @@ def pwa_manifest():
 
 @app.route("/sw.js")
 def service_worker():
-    sw_code = """
-    const CACHE_NAME = 'sare3-static-v2';
-    const ASSETS = [
-        '/',
-        '/logo.png',
-        '/manifest.json'
-    ];
+    sw_code = f"""
+    const CACHE_NAME = 'sare3-static-v3';
+    const LOGO = '{APP_LOGO_URL}';
 
-    self.addEventListener('install', (e) => {
+    self.addEventListener('install', (e) => {{
         self.skipWaiting();
-        e.waitUntil(
-            caches.open(CACHE_NAME).then(cache => {
-                return cache.addAll(ASSETS).catch(() => {});
-            })
-        );
-    });
+    }});
 
-    self.addEventListener('activate', (e) => {
+    self.addEventListener('activate', (e) => {{
         e.waitUntil(
-            caches.keys().then(keys => {
+            caches.keys().then(keys => {{
                 return Promise.all(
-                    keys.map(k => {
+                    keys.map(k => {{
                         if (k !== CACHE_NAME) return caches.delete(k);
-                    })
+                    }})
                 );
-            }).then(() => clients.claim())
+            }}).then(() => clients.claim())
         );
-    });
+    }});
 
-    // استجابة شبكية متوافقة تماماً مع معايير PWA
-    self.addEventListener('fetch', (event) => {
+    self.addEventListener('fetch', (event) => {{
         event.respondWith(
             fetch(event.request).catch(() => caches.match(event.request))
         );
-    });
+    }});
 
     // حلقة جلب خلفية مستمرة تتفقد الإشعارات الجديدة من السيرفر
-    async function checkBackgroundNotifications() {
-        try {
+    async function checkBackgroundNotifications() {{
+        try {{
             const res = await fetch('/api/notifications/poll');
-            if (res.ok) {
+            if (res.ok) {{
                 const notifs = await res.json();
-                if (Array.isArray(notifs) && notifs.length > 0) {
-                    for (const n of notifs) {
-                        await self.registration.showNotification(n.title, {
+                if (Array.isArray(notifs) && notifs.length > 0) {{
+                    for (const n of notifs) {{
+                        await self.registration.showNotification(n.title, {{
                             body: n.message,
-                            icon: '/logo.png',
-                            badge: '/logo.png',
+                            icon: LOGO,
+                            badge: LOGO,
                             vibrate: [400, 150, 400, 150, 400],
                             tag: 'sare3-bg-' + n.id,
                             renotify: true,
-                            data: { url: '/' }
-                        });
-                    }
-                }
-            }
-        } catch(e) {}
-    }
+                            data: {{ url: '/' }}
+                        }});
+                    }}
+                }}
+            }}
+        }} catch(e) {{}}
+    }}
 
-    self.addEventListener('message', (event) => {
-        if (event.data && event.data.type === 'START_POLLING') {
+    self.addEventListener('message', (event) => {{
+        if (event.data && event.data.type === 'START_POLLING') {{
             setInterval(checkBackgroundNotifications, 6000);
-        }
-    });
+        }}
+    }});
 
     setInterval(checkBackgroundNotifications, 6000);
 
-    self.addEventListener('notificationclick', (event) => {
+    self.addEventListener('notificationclick', (event) => {{
         event.notification.close();
         event.waitUntil(
-            clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-                if (clientList.length > 0) {
+            clients.matchAll({{ type: 'window', includeUncontrolled: true }}).then((clientList) => {{
+                if (clientList.length > 0) {{
                     return clientList[0].focus();
-                }
+                }}
                 return clients.openWindow('/');
-            })
+            }})
         );
-    });
+    }});
     """
     return Response(sw_code, mimetype="application/javascript")
 
